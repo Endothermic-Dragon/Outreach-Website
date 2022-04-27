@@ -1,3 +1,6 @@
+Using Express and routing, etc.
+https://evanhahn.com/understanding-express/
+
 Helpful resource?
 https://teamallegiance.com/resources/grunt-webpack/
 
@@ -7,4 +10,7 @@ https://blog.bitsrc.io/how-to-bundle-non-javascript-resources-abda2d5826f#:~:tex
 Babel
 Uglify
 Sass
-PostCSS
+PostCSS Normalize (https://github.com/csstools/postcss-normalize)
+
+nodemon
+EJS

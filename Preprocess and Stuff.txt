@@ -1,0 +1,10 @@
+Helpful resource?
+https://teamallegiance.com/resources/grunt-webpack/
+
+Use this for tips?
+https://blog.bitsrc.io/how-to-bundle-non-javascript-resources-abda2d5826f#:~:text=2.%20Image%20Bundling
+
+Babel
+Uglify
+Sass
+PostCSS

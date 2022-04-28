@@ -17,3 +17,9 @@ EJS
 
 firebase-tools was for firebase hosting
 firebase is for firebase data processing
+
+Webpack:
+https://webpack.js.org/guides/output-management/
+
+Firebase hosting:
+https://firebase.google.com/docs/hosting

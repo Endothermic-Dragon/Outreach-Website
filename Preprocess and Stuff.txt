@@ -14,3 +14,6 @@ PostCSS Normalize (https://github.com/csstools/postcss-normalize)
 
 nodemon
 EJS
+
+firebase-tools was for firebase hosting
+firebase is for firebase data processing

@@ -1,0 +1,32 @@
+Using Express for routing
+https://evanhahn.com/understanding-express/
+
+firebase-tools (Firebase CLI) provides website hosting
+Docs: https://firebase.google.com/docs/hosting
+
+Firebase package provides database access
+Docs: https://firebase.google.com/docs/database
+
+-- Webpack Basics --
+Using webpack
+https://webpack.js.org/guides/output-management/
+
+Bundle JS and CSS
+https://www.sitepoint.com/bundle-static-site-webpack/
+
+Bundle HTML
+https://webpack.js.org/plugins/html-webpack-plugin/
+
+-- Webpack packages --
+Helpful?
+https://teamallegiance.com/resources/grunt-webpack/
+
+JavaScript
+    - Babel - make js compatible with older browsers
+    - Terser - minimize JS (https://webpack.js.org/plugins/terser-webpack-plugin/)
+CSS
+    - Sass - human-readable CSS to split CSS
+    - PostCSS Normalize - make CSS compatible with more browsers (https://github.com/csstools/postcss-normalize)
+HTML
+    - html-loader and file-loader - optimize images in html (https://blog.bitsrc.io/how-to-bundle-non-javascript-resources-abda2d5826f)
+    - Use scripts

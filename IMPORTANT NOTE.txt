@@ -1,1 +1,4 @@
 Macbook - install webpack-cli
+
+Setup github hosting?
+https://firebase.google.com/docs/hosting/github-integration

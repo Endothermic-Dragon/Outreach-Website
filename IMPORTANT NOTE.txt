@@ -1,4 +1,4 @@
-Macbook - install webpack-cli
-
 Setup github hosting?
 https://firebase.google.com/docs/hosting/github-integration
+
+Set up postcss-loader and make sure it actually works

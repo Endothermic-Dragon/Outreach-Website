@@ -1,0 +1,6 @@
+npm i -d _____
+i actually means install
+-d actually means --save-dev
+
+webpack -p
+production mode + minify

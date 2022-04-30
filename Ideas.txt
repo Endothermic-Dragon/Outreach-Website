@@ -1,0 +1,30 @@
+- Redo styling and all, fix formatting, etc.
+- Add google sign-in so others can't simply DDOS the website like me :P
+    - Needed when logging or fetching hours
+    - Automatically connects google user to student ID, if need be
+- Add a statistics tab so there won't be a reason to perform a brute-force id DDOS in the first place
+    - Would present as anonymized data
+    - For the current season would have the average, median, range, and standard deviation
+    - Have an interactive JQUERY data table of the hours distribution to the nearest hour and to the rounded-up-multiple-of-5 hours
+- Add a table of events and their timelines to automatically update the event selection table
+    - Users outside of our website can see what we're up to + engagement stats for each event
+    - Format not decided for "archived" events
+    - Two data tabs for old and current?
+        - Three data tabs for old, current, and all?
+        - Just add an "archived" label next to the event and display everything?
+- Add an automatic event adding tab
+    - Would require google sign-in
+    - Approved leaders can add automatically
+    - Other users would have to request for it to be added
+        - Not sure yet where the request goes, a temporary solution would be to email it to you/me, or to the robotics leaders group
+        - For approved leaders, a tab to see and accept/deny requests
+        - Maybe later - users can send to a specific leader (in case they had one-to-one communication)
+- Maybe - firewall or server timeout for users with more than 100 URL requests
+    - Have to figure out the specifics
+- Admins
+    - Once again, recognized by google sign-in
+    - Delete old users (maintain engagement times for each event, though)
+    - Or keep them as alumni?
+        - View times for each student
+- "Super admin"
+    - Only one person, has the ability to change and update roles

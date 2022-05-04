@@ -1,15 +1,17 @@
-Steps to add a different file type compiling:
-Figure out whether to copy the file or use a webpack extension
-If using a webpack extension, figure out a working script
-Isolate what you're compiling in a sub-project
-Create webpack.config.js and figure out what settings to use
-Define settings as a const next to the other settings
+// To do:
+// - "Un-promise" webpackResources
+// - Add back new RemoveEmptyScriptsPlugin()
 
 
-
-
-
-
+// Steps to add a different file type compiling:
+// - Figure out whether to copy the file or use a webpack extension
+//    - If using a webpack extension, figure out a working script
+//        - Isolate what you're compiling in a sub-project
+//        - Create webpack.config.js and figure out what settings to use
+//        - Define settings as a const next to the other settings
+// - Update getIndividualWebpackSettings to change how it handles the file
+//    - return "skip" to skip (see HTML)
+//    - return {copy_file: true, filePath: filePath} to copy (see Partial for SASS)
 
 
 const fs = require("fs");
@@ -76,12 +78,7 @@ const base_js_config = {
   },
 };
 
-function getIndividualWebpackSettings(
-  dirPathIn,
-  dirPathOut,
-  filePath,
-  devMode
-) {
+function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, devMode) {
   const [extension] = filePath.split(".").slice(-1);
   if (extension == "html") {
     // HTML
@@ -105,7 +102,7 @@ function getIndividualWebpackSettings(
           // new RemoveEmptyScriptsPlugin()
         ],
         entry: dirPathIn + "/" + filePath,
-        mode: devMode
+        mode: devMode,
       });
     } else {
       // Regular CSS
@@ -117,7 +114,7 @@ function getIndividualWebpackSettings(
           // new RemoveEmptyScriptsPlugin()
         ],
         entry: dirPathIn + "/" + filePath,
-        mode: devMode
+        mode: devMode,
       });
     }
   } else if (extension == "js") {
@@ -132,9 +129,9 @@ function getIndividualWebpackSettings(
       entry: dirPathIn + "/" + filePath,
       output: {
         path: __dirname + "/" + dirPathOut + "/" + partialDir,
-        filename: fileName
+        filename: fileName,
       },
-      mode: devMode
+      mode: devMode,
     });
   }
 }
@@ -164,53 +161,61 @@ function webpackResources(dirPathIn, dirPathOut, devMode) {
     getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, devMode)
   );
 
-  var promiseList = []
+  var promiseList = [];
 
-  for (let settings of webpackSettings){
+  for (let settings of webpackSettings) {
     if (settings == "skip") {
-      continue
+      continue;
     }
     if (settings.copy_file) {
       const fileSplit = settings.filePath.split(/\/\\/);
       const partialDir = fileSplit.slice(0, -1).join("/");
       // const [fileName] = fileSplit.slice(-1);
-      promiseList.push(new Promise(async (resolve) => {
-        // Make directories if it does not exist
-        let func1 = fs.mkdir(dirPathOut + "/" + partialDir, { recursive: true }, (err) => {
-          if (err) throw err;
-        });
-        func1.on("finish", () => {
-          let func2 = fs.createReadStream(dirPathIn + "/" + settings.filePath).pipe(
-            fs.createWriteStream(dirPathOut + "/" + settings.filePath)
+      promiseList.push(
+        new Promise(async (resolve) => {
+          // Make directories if it does not exist
+          let func1 = fs.mkdir(
+            dirPathOut + "/" + partialDir,
+            { recursive: true },
+            (err) => {
+              if (err) throw err;
+            }
           );
-          func2.on("finish", resolve)
+          func1.on("finish", () => {
+            let func2 = fs
+              .createReadStream(dirPathIn + "/" + settings.filePath)
+              .pipe(fs.createWriteStream(dirPathOut + "/" + settings.filePath));
+            func2.on("finish", resolve);
+          });
         })
-      }))
-      continue
+      );
+      continue;
     }
 
-    promiseList.push(new Promise(async (resolve) => {
-      webpack(settings, (err, stats) => {
-        if (err) {
-          console.error(err.stack || err);
-          if (err.details) {
-            console.error(err.details);
+    promiseList.push(
+      new Promise(async (resolve) => {
+        webpack(settings, (err, stats) => {
+          if (err) {
+            console.error(err.stack || err);
+            if (err.details) {
+              console.error(err.details);
+            }
+            return;
           }
-          return;
-        }
 
-        const info = stats.toJson();
+          const info = stats.toJson();
 
-        if (stats.hasErrors()) {
-          console.error(info.errors);
-        }
+          if (stats.hasErrors()) {
+            console.error(info.errors);
+          }
 
-        if (stats.hasWarnings()) {
-          console.warn(info.warnings);
-        }
-      });
-      resolve()
-    }))
+          if (stats.hasWarnings()) {
+            console.warn(info.warnings);
+          }
+        });
+        resolve();
+      })
+    );
   }
 
   // fs.rmdir("./dist", { recursive: true }, (err) => {

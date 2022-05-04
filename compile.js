@@ -1,5 +1,6 @@
 // To do:
 // - "Un-promise" webpackResources
+//    - Check if necessary first - async crossover error?
 // - Add back new RemoveEmptyScriptsPlugin()
 
 

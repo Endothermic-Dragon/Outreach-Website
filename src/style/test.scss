@@ -1,11 +1,11 @@
-// @use 'base';
+@use 'base';
 
-// .inverse {
-//   background-color: base.$primary-color;
-//   color: white;
-//   transition: ease-in;
-//   tab-size: 2px;
-// }
+.inverse {
+  background-color: base.$primary-color;
+  color: white;
+  transition: ease-in;
+  tab-size: 2px;
+}
 
 body:fullscreen{
   color: red;

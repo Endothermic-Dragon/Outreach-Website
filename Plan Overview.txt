@@ -14,19 +14,31 @@ https://webpack.js.org/guides/output-management/
 Bundle JS and CSS
 https://www.sitepoint.com/bundle-static-site-webpack/
 
-Bundle HTML
-https://webpack.js.org/plugins/html-webpack-plugin/
-
 -- Webpack packages --
 Helpful?
 https://teamallegiance.com/resources/grunt-webpack/
 
 JavaScript
     - Babel - make js compatible with older browsers
+        Look at https://stackoverflow.com/questions/47721169
     - Terser - minimize JS (https://webpack.js.org/plugins/terser-webpack-plugin/)
 CSS
     - Sass - human-readable CSS to split CSS
     - PostCSS Normalize - make CSS compatible with more browsers (https://github.com/csstools/postcss-normalize)
 HTML
+    - Make scripts inline (https://github.com/QuellingBlade/html-webpack-inline-plugin)
     - html-loader and file-loader - optimize images in html (https://blog.bitsrc.io/how-to-bundle-non-javascript-resources-abda2d5826f)
     - Use scripts
+    - Also use https://webpack.js.org/plugins/html-minimizer-webpack-plugin/
+
+Firebase set home page
+https://stackoverflow.com/questions/62624985/how-to-set-a-default-page-to-display-in-firebase
+
+After implementing everything, if this becomes a significant issue, rename classes using Munch
+https://www.npmjs.com/package/munch
+
+---------------------------------------------------------------------------------------------
+
+Old:
+Bundle HTML
+https://webpack.js.org/plugins/html-webpack-plugin/

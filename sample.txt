@@ -1,0 +1,2 @@
+npm i firebase
+npm i -D babel-loader @babel/core @babel/preset-env webpack css-loader mini-css-extract-plugin postcss-loader postcss-preset-env sass sass-loader terser-webpack-plugin webpack-cli webpack-remove-empty-scripts webpack

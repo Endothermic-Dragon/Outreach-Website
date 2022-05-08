@@ -11,7 +11,6 @@ clean_up = True
 # ----- script start -----
 import os
 import shutil
-import subprocess
 
 # Set working directory
 os.chdir(os.path.dirname(os.path.realpath(__file__)))

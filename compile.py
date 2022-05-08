@@ -22,10 +22,11 @@ localInstall = "firebase html-minifier"
 devLocalInstall = "babel-loader @babel/core @babel/preset-env webpack css-loader \
                 mini-css-extract-plugin postcss-loader postcss-preset-env sass sass-loader \
                 terser-webpack-plugin webpack-cli webpack-remove-empty-scripts webpack"
-output = len(subprocess.check_output("npm list", stderr=subprocess.STDOUT, shell=True).decode("utf-8").split("\n"))
-if output != len(localInstall.split()) + len(devLocalInstall.split()) + 2:
-    os.system("npm i " + localInstall)
-    os.system("npm i -D " + devLocalInstall)
+os.system("npm i")
+# output = len(subprocess.check_output("npm list", stderr=subprocess.STDOUT, shell=True).decode("utf-8").split("\n"))
+# if output != len(localInstall.split()) + len(devLocalInstall.split()) + 2:
+#     os.system("npm i " + localInstall)
+#     os.system("npm i -D " + devLocalInstall)
 
 print("Cleaning compiled resources folder...")
 shutil.rmtree(nodeCompileDir, ignore_errors=True)

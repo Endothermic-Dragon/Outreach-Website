@@ -87,6 +87,10 @@ with app.app_context():
         compiledFile = open(filePathOut, "w+")
         compiledFile.write(renderedHTML)
         compiledFile.close()
+
+if os.path.exists("html_pipeline.txt"):
+    os.remove("html_pipeline.txt")
+
 print("HTML minified and all resources injected.")
 
 for file in removeFiles:

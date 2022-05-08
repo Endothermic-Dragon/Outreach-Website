@@ -1,5 +1,0 @@
-Setup github hosting?
-https://firebase.google.com/docs/hosting/github-integration
-
-Inject CSS (and potentially JS):
-https://stackoverflow.com/questions/4246762

@@ -17,16 +17,7 @@ import subprocess
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 # Install any node dependencies
-print("Checking and installing dependencies...")
-localInstall = "firebase html-minifier"
-devLocalInstall = "babel-loader @babel/core @babel/preset-env webpack css-loader \
-                mini-css-extract-plugin postcss-loader postcss-preset-env sass sass-loader \
-                terser-webpack-plugin webpack-cli webpack-remove-empty-scripts webpack"
 os.system("npm i")
-# output = len(subprocess.check_output("npm list", stderr=subprocess.STDOUT, shell=True).decode("utf-8").split("\n"))
-# if output != len(localInstall.split()) + len(devLocalInstall.split()) + 2:
-#     os.system("npm i " + localInstall)
-#     os.system("npm i -D " + devLocalInstall)
 
 print("Cleaning compiled resources folder...")
 shutil.rmtree(nodeCompileDir, ignore_errors=True)
@@ -37,7 +28,7 @@ compileMode = "production" if production else "development"
 os.system("node compiler_scripts/compiler_controller.js -py " + nodeCompileDir + " " + compileMode)
 
 # Remove empty output from webpack
-os.rmdir("dist")
+shutil.rmtree("dist", ignore_errors=True)
 
 print("CSS and JS resources compiled.")
 

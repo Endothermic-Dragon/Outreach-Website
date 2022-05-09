@@ -1,1 +1,1 @@
-All scripts must have a relative URL (make sure it starts with "./" or simply the directory/file name)
+package.json specifies browser support

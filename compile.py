@@ -5,6 +5,8 @@ production = True
 removeFiles = ["template.html"]
 # Delete intermediate compilation step (resources_compiled folder from node)
 clean_up = True
+# Show warnings for non-local link references
+outerReferences = True
 
 
 
@@ -12,12 +14,21 @@ clean_up = True
 import os
 import shutil
 
+# Install python libraries
+print("Installing python libraries...")
+if os.name == "nt":
+    os.system("py -m pip install flask bs4")
+else:
+    os.system("python3 -m pip install flask bs4")
+
 # Set working directory
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-# Install any node dependencies
+# Install node dependencies
+print("Installing node libraries...")
 os.system("npm i")
 
+# Delete any files in output directory
 print("\nCleaning compiled resources folder...\n")
 shutil.rmtree(nodeCompileDir, ignore_errors=True)
 
@@ -41,37 +52,54 @@ from flask import render_template, Flask
 from glob import glob
 from bs4 import BeautifulSoup, element
 
+# Delete any files in output directory
 print("\nCleaning compiled HTML folder...\n")
 shutil.rmtree(pythonCompileDir, ignore_errors=True)
 
 print("Compiling HTML...")
+warnings = []
 app = Flask(__name__, template_folder=nodeCompileDir)
 with app.app_context():
+    # Iterate over all ".html" files
     for htmlFile in glob(nodeCompileDir + "/**/*.html", recursive=True):
         filePathOut = pythonCompileDir + htmlFile[len(nodeCompileDir):]
         [folderPathOut, fileName] = os.path.split(filePathOut)
         folderPathIn = os.path.dirname(nodeCompileDir + htmlFile[len(nodeCompileDir):])
 
-        # Get compiled HTML
+        # Get flask compiled HTML
         renderedHTML = render_template(htmlFile[len(nodeCompileDir)+1:])
 
-        # Inject resources
+        # Use BeautifulSoup to inject CSS and JS
         soup = BeautifulSoup(renderedHTML, features="html.parser")
 
+        # Replace CSS path to inline CSS
         stylesheets = soup.findAll("link", {"rel": "stylesheet"})
         for s in stylesheets:
-            t = soup.new_tag('style')
-            c = element.NavigableString(open(folderPathIn + "/" + s["href"]).read())
-            t.insert(0,c)
-            s.replaceWith(t)
+            if not (s["href"].startswith("https://") or s["href"].startswith("http://")):
+                t = soup.new_tag('style')
+                c = element.NavigableString(open(folderPathIn + "/" + s["href"]).read())
+                t.insert(0,c)
+                s.replaceWith(t)
+            else:
+                warnings.append(
+                    "Note: CSS in HTML file at path " + htmlFile.replace("\\", "/") + " references a URL.\033[0m\n"\
+                    + "\tReferences CSS file at \"" + s["href"] + "\"."
+                )
 
+        # Replace JS path with inline JS
         scripts = soup.findAll("script", {"src": True})
         for s in scripts:
-            t = soup.new_tag('script')
-            c = element.NavigableString(open(folderPathIn + "/" + s["src"]).read())
-            t.insert(0,c)
-            t['type'] = 'module'
-            s.replaceWith(t)
+            if not (s["src"].startswith("https://") or s["src"].startswith("http://")):
+                t = soup.new_tag('script')
+                c = element.NavigableString(open(folderPathIn + "/" + s["src"]).read())
+                t.insert(0,c)
+                t['type'] = 'module'
+                s.replaceWith(t)
+            else:
+                warnings.append(
+                    "Note: JS in HTML file at path " + htmlFile.replace("\\", "/") + " references a URL.\033[0m\n"\
+                    + "\tReferences JS file at \"" + s["src"] + "\"."
+                )
         renderedHTML = str(soup)
 
         # Push compiled HTML to pipeline
@@ -88,7 +116,7 @@ with app.app_context():
             renderedHTML = pipeline.read()
             pipeline.close()
 
-        # Save to "./compiled_html"
+        # Save to output directory
         os.makedirs(folderPathOut, exist_ok=True)
         compiledFile = open(filePathOut, "w+")
         compiledFile.write(renderedHTML)
@@ -115,3 +143,8 @@ if clean_up:
 
 print("Files deleted as per user settings.")
 print("Your code has compiled successfully!")
+if warnings != [] and outerReferences:
+    print("\n")
+    print("\033[4m\033[93m" + "\n\n\033[4m\033[93m".join(warnings))
+    print("\nThe above warnings are not necessarily a bad thing, just an FYI.\n"\
+          "You can deactivate these warnings in \"compile.py\".")

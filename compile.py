@@ -11,7 +11,6 @@ clean_up = True
 # ----- script start -----
 import os
 import shutil
-import subprocess
 
 # Set working directory
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -19,13 +18,19 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 # Install any node dependencies
 os.system("npm i")
 
-print("Cleaning compiled resources folder...")
+print("\nCleaning compiled resources folder...\n")
 shutil.rmtree(nodeCompileDir, ignore_errors=True)
 
 # Run compiler
 print("Compiling CSS and JS...")
 compileMode = "production" if production else "development"
 os.system("node compiler_scripts/compiler_controller.js -py " + nodeCompileDir + " " + compileMode)
+
+# Copy static resources
+try:
+    shutil.copytree("./src/static", nodeCompileDir + "/static")
+except Exception:
+    pass
 
 # Remove empty output from webpack
 shutil.rmtree("dist", ignore_errors=True)
@@ -36,7 +41,7 @@ from flask import render_template, Flask
 from glob import glob
 from bs4 import BeautifulSoup, element
 
-print("Cleaning compiled html folder...")
+print("\nCleaning compiled HTML folder...\n")
 shutil.rmtree(pythonCompileDir, ignore_errors=True)
 
 print("Compiling HTML...")
@@ -88,7 +93,18 @@ with app.app_context():
         compiledFile = open(filePathOut, "w+")
         compiledFile.write(renderedHTML)
         compiledFile.close()
-print("HTML minified and all resources injected.")
+
+# Delete pipeline - no longer necessary
+if os.path.exists("html_pipeline.txt"):
+    os.remove("html_pipeline.txt")
+
+# Copy static resources
+try:
+    shutil.copytree("./src/static", pythonCompileDir + "/static")
+except Exception:
+    pass
+
+print("HTML minified and all resources injected.\n")
 
 for file in removeFiles:
     if os.path.exists(pythonCompileDir + "/" + file):
@@ -98,4 +114,4 @@ if clean_up:
     shutil.rmtree(nodeCompileDir, ignore_errors=True)
 
 print("Files deleted as per user settings.")
-print("Compilation finished!")
+print("Your code has compiled successfully!")

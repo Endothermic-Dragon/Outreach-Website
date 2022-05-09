@@ -94,7 +94,6 @@ with app.app_context():
         compiledFile.write(renderedHTML)
         compiledFile.close()
 
-<<<<<<< HEAD
 # Delete pipeline - no longer necessary
 if os.path.exists("html_pipeline.txt"):
     os.remove("html_pipeline.txt")
@@ -106,12 +105,6 @@ except Exception:
     pass
 
 print("HTML minified and all resources injected.\n")
-=======
-if os.path.exists("html_pipeline.txt"):
-    os.remove("html_pipeline.txt")
-
-print("HTML minified and all resources injected.")
->>>>>>> 7d54351d3c229a0237b25585fc24ca1f3e2b2532
 
 for file in removeFiles:
     if os.path.exists(pythonCompileDir + "/" + file):

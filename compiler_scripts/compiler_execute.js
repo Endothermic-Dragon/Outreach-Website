@@ -150,7 +150,11 @@ function childGetFiles(dirPath, arrayOfFiles) {
 
 function getAllFiles(dirPath) {
   const files = childGetFiles(dirPath);
+<<<<<<< HEAD
   return files.map((filePath) => ("./" + filePath.slice(dirPath.length - 1)).replaceAll("\\", "/"));
+=======
+  return files.map((filePath) => "./" + filePath.slice(dirPath.length - 1));
+>>>>>>> 7d54351d3c229a0237b25585fc24ca1f3e2b2532
 }
 
 function webpackResources(dirPathIn, dirPathOut, jsAdjust, devMode) {

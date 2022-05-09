@@ -1,4 +1,0 @@
-Setup github hosting?
-https://firebase.google.com/docs/hosting/github-integration
-
-Set up html-inline-script-webpack-plugin and html-inline-css-webpack-plugin, make sure it actually works

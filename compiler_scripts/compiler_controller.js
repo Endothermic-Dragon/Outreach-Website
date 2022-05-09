@@ -1,9 +1,9 @@
 const { webpackResources } = require("./compiler_execute.js");
 try {
-  if (process.argv[2] != "-y"){
+  if (process.argv[2] != "-py"){
     throw new Error();
   }
-  webpackResources("./src", "./compiled", "../", "production");
+  webpackResources("./src", process.argv[3], "../", process.argv[4]);
 } catch {
   console.log("Unexpected error encountered.\n");
   console.log("This script is meant to be run by the python file \"compiler.py\" in the master folder.");

@@ -77,7 +77,7 @@ const base_js_config = {
 
 function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust, devMode) {
   const [extension] = filePath.split(".").slice(-1);
-  if (extension == "html") {
+  if (extension == "html" || filePath.slice(0,9) == "./static/") {
     // HTML
     return {
       copy_file: true,
@@ -85,7 +85,7 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
     };
   } else if (["scss", "css"].includes(extension)) {
     // CSS
-    const [fileName] = filePath.split(/[\/\\]/).slice(-1);
+    const [fileName] = filePath.split("/").slice(-1);
     if (fileName.slice(0, 1) == "_") {
       // Partial for SASS
       return "skip";
@@ -116,7 +116,7 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
     }
   } else if (extension == "js") {
     // JS
-    const fileSplit = filePath.split(/[\/\\]/);
+    const fileSplit = filePath.split("/");
     const partialDir = fileSplit.slice(0, -1).join("/");
     const [fileName] = fileSplit.slice(-1);
     return Object.assign({}, base_js_config, {
@@ -150,10 +150,12 @@ function childGetFiles(dirPath, arrayOfFiles) {
 
 function getAllFiles(dirPath) {
   const files = childGetFiles(dirPath);
-  return files.map((filePath) => ".\\" + filePath.slice(dirPath.length - 1));
+  return files.map((filePath) => ("./" + filePath.slice(dirPath.length - 1)).replaceAll("\\", "/"));
 }
 
 function webpackResources(dirPathIn, dirPathOut, jsAdjust, devMode) {
+  dirPathIn = dirPathIn.replaceAll("\\", "/")
+  dirPathOut = dirPathOut.replaceAll("\\", "/")
   var webpackSettings = getAllFiles(dirPathIn).map((filePath) =>
     getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust, devMode)
   );
@@ -163,7 +165,7 @@ function webpackResources(dirPathIn, dirPathOut, jsAdjust, devMode) {
       continue;
     }
     if (settings.copy_file) {
-      const fileSplit = settings.filePath.split(/\/\\/);
+      const fileSplit = settings.filePath.split("/");
       const partialDir = fileSplit.slice(0, -1).join("/");
 
       // Make directories if it does not exist

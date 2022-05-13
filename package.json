@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "firebase": "^9.8.0",
     "html-minifier": "^4.0.0"
   },
   "devDependencies": {

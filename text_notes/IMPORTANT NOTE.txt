@@ -18,5 +18,7 @@ Compression package - https://www.npmjs.com/package/compression
 
 Put in CAPTCHA and google sign-in: https://codeforgeek.com/google-recaptcha-node-js-tutorial/
 
-Flask
-flask.render_template
+Generating unique user IDs - just use google ID
+
+Heroku ignore with .slugignore:
+https://devcenter.heroku.com/articles/slug-compiler#ignoring-files-with-slugignore

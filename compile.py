@@ -1,13 +1,20 @@
 # ----- settings -----
-nodeCompileDir = "./resources_compiled"
-pythonCompileDir = "./html_compiled"
+nodeCompileDir = "./compiled"
+pythonCompileDir = "./build"
 production = True
-removeFiles = ["template.html"]
-# Delete intermediate compilation step (resources_compiled folder from node)
-clean_up = True
-# Show warnings for non-local link references
+removeFiles = ["template.html", "test copy.html"]
+
+# Minimize HTML
+min_html = False
+
+# Inline CSS and JS
+inline_resources = False
+
+# Show warnings for non-local link references (ignored if inline_resources if false)
 outerReferences = True
 
+# Delete intermediate compilation step (resources_compiled folder from node)
+clean_up = True
 
 
 # ----- script start -----
@@ -59,85 +66,99 @@ shutil.rmtree(pythonCompileDir, ignore_errors=True)
 print("Compiling HTML...")
 warnings = []
 app = Flask(__name__, template_folder=nodeCompileDir)
+
 with app.app_context():
-    # Iterate over all ".html" files
-    for htmlFile in glob(nodeCompileDir + "/**/*.html", recursive=True):
-        filePathOut = pythonCompileDir + htmlFile[len(nodeCompileDir):]
-        [folderPathOut, fileName] = os.path.split(filePathOut)
-        folderPathIn = os.path.dirname(nodeCompileDir + htmlFile[len(nodeCompileDir):])
+    for root, dirs, files in os.walk(nodeCompileDir):
+        for file in files:
+            relPath = (root + "/" + file).replace("\\", "/")
 
-        # Get flask compiled HTML
-        renderedHTML = render_template(htmlFile[len(nodeCompileDir)+1:])
+            filePathOut = pythonCompileDir + relPath[len(nodeCompileDir):]
+            [folderPathOut, fileName] = os.path.split(filePathOut)
+            folderPathIn = os.path.dirname(nodeCompileDir + relPath[len(nodeCompileDir):])
 
-        # Use BeautifulSoup to inject CSS and JS
-        soup = BeautifulSoup(renderedHTML, features="html.parser")
-
-        # Replace CSS path to inline CSS
-        stylesheets = soup.findAll("link", {"rel": "stylesheet"})
-        for s in stylesheets:
-            if not (s["href"].startswith("https://") or s["href"].startswith("http://")):
-                t = soup.new_tag('style')
-                c = element.NavigableString(open(folderPathIn + "/" + s["href"]).read())
-                t.insert(0,c)
-                s.replaceWith(t)
+            if relPath[-5:] != ".html":
+                if not inline_resources:
+                    # Copy file over
+                    os.makedirs(folderPathOut, exist_ok=True)
+                    shutil.copy(relPath, filePathOut)
             else:
-                warnings.append(
-                    "Note: CSS in HTML file at path " + htmlFile.replace("\\", "/") + " references a URL.\033[0m\n"\
-                    + "\tReferences CSS file at \"" + s["href"] + "\"."
-                )
+                # Get flask compiled HTML
+                renderedHTML = render_template(relPath[len(nodeCompileDir)+1:])
 
-        # Replace JS path with inline JS
-        scripts = soup.findAll("script", {"src": True})
-        for s in scripts:
-            if not (s["src"].startswith("https://") or s["src"].startswith("http://")):
-                t = soup.new_tag('script')
-                c = element.NavigableString(open(folderPathIn + "/" + s["src"]).read())
-                t.insert(0,c)
-                t['type'] = 'module'
-                s.replaceWith(t)
-            else:
-                warnings.append(
-                    "Note: JS in HTML file at path " + htmlFile.replace("\\", "/") + " references a URL.\033[0m\n"\
-                    + "\tReferences JS file at \"" + s["src"] + "\"."
-                )
-        renderedHTML = str(soup)
+                if inline_resources:
+                    # Use BeautifulSoup to inject CSS and JS
+                    soup = BeautifulSoup(renderedHTML, features="html.parser")
 
-        # Push compiled HTML to pipeline
-        pipeline = open("html_pipeline.txt", "w+")
-        pipeline.seek(0)
-        pipeline.truncate()
-        pipeline.write(renderedHTML)
-        pipeline.close()
+                    # Replace CSS path to inline CSS
+                    stylesheets = soup.findAll("link", {"rel": "stylesheet"})
+                    for s in stylesheets:
+                        if not (s["href"].startswith("https://") or s["href"].startswith("http://")):
+                            t = soup.new_tag('style')
+                            c = element.NavigableString(open(folderPathIn + "/" + s["href"]).read())
+                            t.insert(0,c)
+                            s.replaceWith(t)
+                        else:
+                            warnings.append(
+                                "Note: CSS in HTML file at path " + relPath + " references a URL.\033[0m\n"\
+                                + "\tReferences CSS file at \"" + s["href"] + "\"."
+                            )
 
-        # Minimize HTML, pass pipeline path
-        if production:
-            os.system("node compiler_scripts/minify_html.js html_pipeline.txt")
-            pipeline = open("html_pipeline.txt", "r")
-            renderedHTML = pipeline.read()
-            pipeline.close()
+                    # Replace JS path with inline JS
+                    scripts = soup.findAll("script", {"src": True})
+                    for s in scripts:
+                        if not (s["src"].startswith("https://") or s["src"].startswith("http://")):
+                            t = soup.new_tag('script')
+                            c = element.NavigableString(open(folderPathIn + "/" + s["src"]).read())
+                            t.insert(0,c)
+                            t['type'] = 'module'
+                            s.replaceWith(t)
+                        else:
+                            warnings.append(
+                                "Note: JS in HTML file at path " + relPath + " references a URL.\033[0m\n"\
+                                + "\tReferences JS file at \"" + s["src"] + "\"."
+                            )
+                    renderedHTML = str(soup)
 
-        # Save to output directory
-        os.makedirs(folderPathOut, exist_ok=True)
-        compiledFile = open(filePathOut, "w+")
-        compiledFile.write(renderedHTML)
-        compiledFile.close()
+                # Minimize HTML
+                if min_html:
+                    # Push compiled HTML to pipeline
+                    pipeline = open("html_pipeline.txt", "w+")
+                    pipeline.seek(0)
+                    pipeline.truncate()
+                    pipeline.write(renderedHTML)
+                    pipeline.close()
+
+                    # Push to compiler, pass pipeline path
+                    os.system("node compiler_scripts/minify_html.js html_pipeline.txt")
+                    pipeline = open("html_pipeline.txt", "r")
+                    renderedHTML = pipeline.read()
+                    pipeline.close()
+
+                # Save to output directory
+                os.makedirs(folderPathOut, exist_ok=True)
+                compiledFile = open(filePathOut, "w+")
+                compiledFile.write(renderedHTML)
+                compiledFile.close()
 
 # Delete pipeline - no longer necessary
 if os.path.exists("html_pipeline.txt"):
     os.remove("html_pipeline.txt")
 
 # Copy static resources
+shutil.rmtree(pythonCompileDir + "/static", ignore_errors=True)
 try:
     shutil.copytree("./src/static", pythonCompileDir + "/static")
 except Exception:
     pass
 
-print("HTML minified and all resources injected.\n")
+print("HTML compiled as per user settings.\n")
 
+# Delete files from removeFiles list
 for file in removeFiles:
     if os.path.exists(pythonCompileDir + "/" + file):
         os.remove(pythonCompileDir + "/" + file)
 
+# Delete node-compiled folder
 if clean_up:
     shutil.rmtree(nodeCompileDir, ignore_errors=True)
 

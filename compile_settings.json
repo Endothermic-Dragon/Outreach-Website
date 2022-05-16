@@ -1,0 +1,17 @@
+{
+    "quick_compile": true,
+
+    "node_compile_dir": "./compiled",
+    "python_compile_dir": "./build",
+    
+    "production": true,
+    "clean_up": true,
+
+    "min_html": false,
+    "resources": {
+        "inline_resources": false,
+        "outer_references": false
+    },
+
+    "remove_files": ["menu.html"]
+}

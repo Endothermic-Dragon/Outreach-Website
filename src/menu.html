@@ -1,0 +1,22 @@
+<nav>
+  <div class="logo"><img src="./static/logo.png"></div>
+  <ul>
+  {%- set navigation = [("home", "Home"), ("about-us", "About Us"), ("initiatives", "Initiatives"), ("productivity", "Productivity")] -%}
+  {%- for item in navigation -%}
+  {% if item[0] == page %}
+    <li class="active"><a>{{item[1]}}</a></li>
+  {% else %}
+    <li><a href="{{item[0]}}">{{item[1]}}</a></li>
+  {%- endif -%}
+  {%- endfor -%}
+  {%- set navigation = [("log", "Log Hours"), ("order-initiatives", "Order Initiatives"), ("edit-initiatives", "Edit Initiatives"), ("edit-users", "Edit Users")] -%}
+  {# For super-admins, edit-users allows to edit everyone #}
+  {%- for item in navigation -%}
+  {% if item[0] == page %}
+    <li class="requires-sign-in active"><a>{{item[1]}}</a></li>
+  {% else %}
+    <li class="requires-sign-in"><a href="{{item[0]}}">{{item[1]}}</a></li>
+  {%- endif -%}
+  {%- endfor -%}
+  </ul>
+</nav>

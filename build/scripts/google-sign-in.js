@@ -1,1 +1,0 @@
-window.onSignIn=function(o){var e=o.getBasicProfile();console.log("ID: "+e.getId()),console.log("Name: "+e.getName()),console.log("Image URL: "+e.getImageUrl()),console.log("Email: "+e.getEmail())};

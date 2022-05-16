@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-const port = 8080
+const port = 80
 
 app.use("/static", express.static('build/static'))
 app.use("/style", express.static('build/style'))

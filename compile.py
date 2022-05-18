@@ -24,6 +24,7 @@ def compile_code(quick_compile, node_compile_dir, python_compile_dir, production
 
         # Install node dependencies
         print("Installing node libraries...")
+        os.system("npm i nodemon -g")
         os.system("npm i")
 
     # Delete any files in output directory
@@ -159,6 +160,22 @@ def compile_code(quick_compile, node_compile_dir, python_compile_dir, production
         print("\033[4m\033[93m" + "\n\n\033[4m\033[93m".join(warnings))
         print("\nThe above warnings are not necessarily a bad thing, just an FYI.\n"\
             "You can deactivate these warnings in \"compile.py\".")
+    
+    if not quick_compile:
+        print("What does the compiler actually do?")
+        print("\t- Compiles and minimizes \".scss\" files to \".css\" files with wider browser support")
+        print("\t- Compiles and minimizes \".js\" files to have polyfills and wider browser support")
+        print("\t- Compiles jinja-HTML into regular HTML")
+        print("\t- Copies all files in the \"static\" subdirectory without changing them")
+        print("")
+        print("Here are your next steps:")
+        print("\t1. Run \"nodemon route.js\" on the open directory (use separate terminal instance)")
+        print("\t2. Write and modify code in the \"src\" subdirectory")
+        print("\t\ta. Put all code in its corresponding folders unless absolutely necessary")
+        print("\t\tb. Don't be repetitive - use the structure to your advantage!")
+        print("\t\tc. Leave comments on what your code does")
+        print("\t3. Re-run this compiler")
+        print("\t4. View your HTML files at http://localhost/... (path to your HTML file, without the \".html\")")
 
 # Unpack settings and send to compile function
 compile_code(**{x: settings[x] for x in settings if x != "resources"}, **settings["resources"])

@@ -32,18 +32,22 @@ function signIn(){
           "X-Requested-With": "javascript-fetch"
         }
       })
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => console.log(data))
-      // const xhr = new XMLHttpRequest();
-      // xhr.open('POST', code_receiver_uri, true);
-      // xhr.onload = function() {
-      //   console.log('Auth code response: ' + xhr.responseText);
-      // };
-      // xhr.send('code=' + code);
     },
   });
 
   client.requestCode()
 }
 
-document.getElementsByClassName("sign-in")[0].children[0].addEventListener("click", signIn)
+fetch("./auto-login-user")
+.then(async res => {
+  if (res.status != 200){
+    let button = document.getElementsByClassName("sign-in")[0]
+    button.classList.add("show")
+    button.children[0].addEventListener("click", signIn)
+  } else {
+    // Display profile
+    console.log(await res.json())
+  }
+})

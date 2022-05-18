@@ -120,7 +120,6 @@ nav {
         box-sizing: border-box;
 
         button {
-            display: block;
             width: 125px;
             height: 100%;
             font-size: 18px;
@@ -129,7 +128,7 @@ nav {
             outline: none;
             border: 3px solid #fe0011;
             background-color: #ac000b;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -144,6 +143,10 @@ nav {
                 margin-right: 5px;
                 transform: translate(0, -1px); // Force-fix weird visual offset effect
             }
+        }
+
+        &.show button {
+            display: flex;
         }
     }
 }

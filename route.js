@@ -29,7 +29,7 @@ const userTokensDB = new sqlite3.Database("./user_tokens.db", (err) => {
   if (err) {
     console.error(err.message);
   }
-  console.log("Connected to the my database.");
+  console.log("Connected to the user_tokens database.");
 });
 
 // Get profile details from ID token
@@ -73,7 +73,7 @@ app.get("/auto-login-user", async function (req, res) {
         oauth2Client,
         JSON.parse(token_data[req.cookies.userID])[0]
       );
-      res.status(200).send({ data: userData[0] });
+      res.status(200).send(userData[0]);
     } else {
       // Not in token database
       res.status(400).send();
@@ -115,7 +115,7 @@ app.post("/validate-login-code", async function (req, res) {
       ]);
 
       res.cookie("userID", cookieID);
-      res.status(200).send({ data: publicData });
+      res.status(200).send(publicData);
     }
   } else {
     // Unauthorized request

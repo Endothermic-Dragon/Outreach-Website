@@ -72,17 +72,22 @@ app.get("/auto-login-user", async function (req, res) {
       // Initialize client
       const oauth2Client = newClient()
 
-      // Handle if error (500)
+      // TO DO: Handle if error (500)
+
+      // Get user data
       let userData = await getUserDetails(
         oauth2Client,
         JSON.parse(token_data[req.cookies.userID])[0]
       );
+
+      // Send profile data
       res.status(200).send(userData[0]);
     } else {
       // Not in token database
       res.status(400).send();
     }
   } else {
+    // Unauthorized request
     res.status(404).send();
   }
 });
@@ -94,33 +99,57 @@ app.post("/validate-login-code", async function (req, res) {
   // TO DO: Validate origin URL
 
   if (req.get("X-Requested-With") == "javascript-fetch") {
-    // Handle if error (500)
+    // TO DO: Handle if error (500)
+
+    // Initialize client
     let tokenResponse = await oauth2Client.getToken(req.body.code);
 
-    // Generate UNIQUE value to ID user
-    let cookieID = uuid();
-    while (true) {
-      if (!token_data[cookieID]) {
-        break;
-      }
-      cookieID = uuid();
-    }
-
+    // Get user data
     let [publicData, privateData] = await getUserDetails(oauth2Client, tokenResponse.tokens);
+
+    // Check if valid email extension
     if (
-      ["htps.us", "gmail.com"].includes(
+      !["htps.us", "gmail.com"].includes(
         privateData.email.split("@").slice(-1)[0]
       )
-    ) {
-      // Wipe old data with same google ID
+    ){
+      // Unauthorized user
+      return res.status(404).send()
+    }
+
+    // Compare google ID against database
+    let userData = Object.entries(token_data).find(el => JSON.parse(el[1])[1] == privateData.googleID)
+
+    // If uuid exists, reassign, otherwise, generate and remember
+    if (userData){
+      // Send cookie ("remember me")
+      res.cookie("userID", userData[0])
+
+      // Send profile data
+      res.status(200).send(publicData)
+    } else {
+      // Generate UNIQUE value to ID user
+      let cookieID = uuid();
+      while (true) {
+        if (!token_data[cookieID]) {
+          break;
+        }
+        cookieID = uuid();
+      }
+
+      // Store in database
       token_data[cookieID] = JSON.stringify([
         tokenResponse.tokens,
         privateData.googleID,
       ]);
 
+      // Send cookie ("remember me")
       res.cookie("userID", cookieID);
+
+      // Send profile data
       res.status(200).send(publicData);
     }
+
   } else {
     // Unauthorized request
     res.status(404).send();
@@ -128,11 +157,12 @@ app.post("/validate-login-code", async function (req, res) {
 });
 
 // Serve regular files
-
+// Serve static resources, styling, and scripts
 app.use("/static", express.static("build/static"));
 app.use("/style", express.static("build/style"));
 app.use("/scripts", express.static("build/scripts"));
 
+// Redirect ".html"
 app.use("/", function (req, res, next) {
   if (req.url.slice(-5) == ".html") {
     res.status(200);
@@ -141,8 +171,10 @@ app.use("/", function (req, res, next) {
   next();
 });
 
+// Serve HTML files
 app.use(function (req, res) {
   res.sendFile(req.url + ".html", { root: __dirname + "/build" });
 });
 
+// Start server
 app.listen(port, () => console.log(`Server listening on port: ${port}`));

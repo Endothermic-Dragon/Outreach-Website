@@ -24,13 +24,17 @@ let token_data = {};
 // Col 2: tokens required to get data
 // Col 3: google ID
 // When adding new data, wipe old data with same google ID
-const sqlite3 = require("sqlite3").verbose();
-const userTokensDB = new sqlite3.Database("./user_tokens.db", (err) => {
-  if (err) {
-    console.error(err.message);
-  }
-  console.log("Connected to the user_tokens database.");
-});
+
+
+// Use pg not sqlite3
+
+// const sqlite3 = require("sqlite3").verbose();
+// const userTokensDB = new sqlite3.Database("./user_tokens.db", (err) => {
+//   if (err) {
+//     console.error(err.message);
+//   }
+//   console.log("Connected to the user_tokens database.");
+// });
 
 // Get profile details from ID token
 async function getUserDetails(oauth2Client, tokens) {

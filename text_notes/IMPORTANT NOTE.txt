@@ -1,0 +1,24 @@
+Setup github hosting?
+https://firebase.google.com/docs/hosting/github-integration
+
+-- Later --
+Why?
+- No request limits
+- Send whatever resources you want
+- No limits to database
+- BUT, requires more management
+- Send scripts with defer and async
+
+Transfer back to Heroku with Redis (or some other database)
+Defer all scripts - https://javascript.info/script-async-defer
+Use express to route
+Use gzip and compression - https://expressjs.com/en/advanced/best-practice-performance.html
+Another helpful link: https://expressjs.com/en/advanced/best-practice-performance.html
+Compression package - https://www.npmjs.com/package/compression
+
+Put in CAPTCHA and google sign-in: https://codeforgeek.com/google-recaptcha-node-js-tutorial/
+
+Generating unique user IDs - just use google ID
+
+Heroku ignore with .slugignore:
+https://devcenter.heroku.com/articles/slug-compiler#ignoring-files-with-slugignore

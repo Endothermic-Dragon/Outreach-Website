@@ -1,0 +1,8 @@
+compiler_scripts/
+node_modules/
+src/
+text-notes/
+.gitignore
+compile.py
+package-lock.json
+package.json

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="stylesheet" href="./static/fonts/segoe-ui-font.css">
+<link rel="stylesheet" href="./style/global.css">
+<script src="https://accounts.google.com/gsi/client" defer></script>
+<script src="./static/google-sign-in.js" defer></script>
+		<title>Log Hours</title>
+		<link rel="stylesheet" href="./style/log.css">
+    <script defer src="./scripts/log.js"></script>
+  </head>
+  <body>
+    
+    <nav>
+  <div class="logo"><img src="./static/roboraiders-logo.png"></div>
+  <ul>
+    <li><a href="home">Home</a></li>
+    <li><a href="about-us">About Us</a></li>
+    <li><a href="initiatives">Initiatives</a></li>
+    <li><a href="productivity">Productivity</a></li>
+    <li class="requires-sign-in active"><a>Log Hours</a></li>
+  
+    <li class="requires-sign-in"><a href="order-initiatives">Order Initiatives</a></li>
+    <li class="requires-sign-in"><a href="edit-initiatives">Edit Initiatives</a></li>
+    <li class="requires-sign-in"><a href="edit-users">Edit Users</a></li></ul>
+  
+  <div class="sign-in"><button><img src="./static/google-logo.png">Sign In</button></div>
+</nav>
+    <h1>Log Hours</h1>
+    <form>
+      <div class="form-container">
+        <div>
+          <label for="initiative-dropdown">Choose the initiative you are entering hours for:</label>
+          <select name="initiative" id="initiative-dropdown">
+            <option value="kFSHosvJjvdnNDiS">STEM through gaming</option>
+            <option value="JklhGskkLShfhJsH">Food Drive</option>
+            <option value="fjKshsOVhsneuvGi">RoboSmiles Cards</option>
+          </select>
+        </div>
+        <div>
+          <label>Enter outreach time (max 10 hours):</label>
+          <br>
+          <span><input type="number" name="hours" class="outreach-hours" value="0"> hours</span>
+          <br>
+          <span><input type="number" name="minutes" class="outreach-hours" value="0"> minutes</span>
+        </div>
+        <button type="submit" class="submit-hours">Enter hours</button>
+      </div>
+    </form>
+  </body>
+</html>

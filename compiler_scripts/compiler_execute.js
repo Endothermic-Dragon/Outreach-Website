@@ -77,19 +77,19 @@ const base_js_config = {
 
 function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust, devMode) {
   const [extension] = filePath.split(".").slice(-1);
-  if (extension == "html" || filePath.slice(0,9) == "./static/") {
+  if (["html", "jinja-html"].includes(extension) || filePath.slice(0,9) == "./static/") {
     // HTML
     return {
       copy_file: true,
       filePath: filePath,
     };
-  } else if (["scss", "css"].includes(extension)) {
+  } else if (["sass", "scss", "css"].includes(extension)) {
     // CSS
     const [fileName] = filePath.split("/").slice(-1);
     if (fileName.slice(0, 1) == "_") {
       // Partial for SASS
       return "skip";
-    } else if (extension == "scss") {
+    } else if (["sass", "scss"].includes(extension)) {
       // SASS
       return Object.assign({}, base_css_config, {
         plugins: [

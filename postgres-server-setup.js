@@ -8,7 +8,7 @@ const client = new Client({
   }
 });
 
-client.connect();
+await client.connect();
 
 function log_output(err, res){
   if (err) throw err;
@@ -22,10 +22,10 @@ console.log(1)
 await client.query(`
 create table cookie_user_map(
   cookie_uuid char(36),
+  subteam varchar(32),
+  tags varchar(10)[],
   token varchar(2048),
-  google_id varchar(32),
-  tags varchar(64),
-  subteam varchar(32)
+  google_id varchar(32)
 );
 `, log_output);
 
@@ -44,9 +44,12 @@ await client.query(`
 create table initiatives(
   order_id smallint,
   name varchar(200),
+  description varchar(5000),
   participants smallint,
   engagement varchar(8),
-  description varchar(5000)
+  lead boolean,
+  regular boolean,
+  archive boolean
 );
 `, log_output);
 

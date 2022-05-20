@@ -1,16 +1,13 @@
 const { google } = require("googleapis");
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const uuid = require("uuid").v4;
+const SqlString = require('sqlstring');
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const app = express();
 const port = 80;
 
-const peopleAPI = google.people({
-  version: "v1",
-});
-
-const client = new Client({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
@@ -25,7 +22,11 @@ function newClient(){
   );
 }
 
+const peopleAPI = google.people({
+  version: "v1",
+});
 
+externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
 
 
 // Replace with database
@@ -113,21 +114,23 @@ app.post("/validate-login-code", async function (req, res) {
 
     // Check if valid email extension
     if (
-      !["htps.us", "gmail.com"].includes(
-        privateData.email.split("@").slice(-1)[0]
-      )
+      !privateData.email.split("@").slice(-1)[0] != "htps.us"
+      && !externalEmails.includes(privateData.email)
     ){
       // Unauthorized user
       return res.status(404).send()
     }
 
     // Compare google ID against database
-    let userData = Object.entries(token_data).find(el => JSON.parse(el[1])[1] == privateData.googleID)
+   let cookieID = await pool.query(`
+    select cookie_uuid from cookie_user_map where google_id = '${privateData.googleID}';
+    `).then(data => data.rows[0]?.cookie_uuid).catch(err => console.log(err))
+    // console.log(cookieID)
 
     // If uuid exists, reassign, otherwise, generate and remember
-    if (userData){
+    if (cookieID){
       // Send cookie ("remember me")
-      res.cookie("userID", userData[0])
+      res.cookie("userID", cookieID)
 
       // Send profile data
       res.status(200).send(publicData)
@@ -142,12 +145,16 @@ app.post("/validate-login-code", async function (req, res) {
       }
 
       // Store in database
-      let data = JSON.stringify([
-        tokenResponse.tokens,
-        privateData.googleID,
-      ])
-      token_data[cookieID] = data;
-      console.log(cookieID.length)
+      await pool.query(`
+      insert into cookie_user_map(cookie_uuid, token, google_id)
+      values (${
+        SqlString.escape(cookieID)
+      }, ${
+        SqlString.escape(JSON.stringify(tokenResponse.tokens))
+      }, ${
+        SqlString.escape(privateData.googleID)
+      });
+      `).catch(err => console.log(err))
 
       // Send cookie ("remember me")
       res.cookie("userID", cookieID);
@@ -155,7 +162,6 @@ app.post("/validate-login-code", async function (req, res) {
       // Send profile data
       res.status(200).send(publicData);
     }
-
   } else {
     // Unauthorized request
     res.status(404).send();

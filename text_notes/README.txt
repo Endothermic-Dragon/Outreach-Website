@@ -37,17 +37,6 @@ outreach:
                 }
             }
         }"
-        // When hours added, if no previous hours, add one to people count
-        initiative_id_1: "{
-            lead: true,
-            // Timestamp to ID entered time
-            engagement: [Date.now(): hours]
-        }",
-        initiative_id_1: "{
-            lead: false,
-            // Timestamp to ID entered time
-            engagement: [Date.now(): hours]
-        }",
     }
 }
 
@@ -58,6 +47,10 @@ initiatives:
         participants: count,
         engagement: "hours:minutes",
         order-id: #,
-        description: initiative_description (max 5000 chars)
+        description: initiative_description (max 5000 chars),
+        // Does this initiative have leadership prep hours
+        lead: boolean,
+        // Does this initiative have participating hours
+        regular: boolean
     }
 }

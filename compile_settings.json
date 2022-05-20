@@ -13,5 +13,5 @@
         "outer_references": false
     },
 
-    "remove_files": ["menu.html"]
+    "remove_files": ["menu.html", "global-headers.html"]
 }

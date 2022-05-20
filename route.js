@@ -1,12 +1,21 @@
 const { google } = require("googleapis");
-const peopleAPI = google.people({
-  version: "v1",
-});
+const { Client } = require('pg');
 const uuid = require("uuid").v4;
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const app = express();
 const port = 80;
+
+const peopleAPI = google.people({
+  version: "v1",
+});
+
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 function newClient(){
   return new google.auth.OAuth2(
@@ -15,6 +24,9 @@ function newClient(){
     "http://localhost"
   );
 }
+
+
+
 
 // Replace with database
 let token_data = {};
@@ -26,15 +38,7 @@ let token_data = {};
 // When adding new data, wipe old data with same google ID
 
 
-// Use pg not sqlite3
-
-// const sqlite3 = require("sqlite3").verbose();
-// const userTokensDB = new sqlite3.Database("./user_tokens.db", (err) => {
-//   if (err) {
-//     console.error(err.message);
-//   }
-//   console.log("Connected to the user_tokens database.");
-// });
+// Use pg for database
 
 // Get profile details from ID token
 async function getUserDetails(oauth2Client, tokens) {
@@ -138,10 +142,12 @@ app.post("/validate-login-code", async function (req, res) {
       }
 
       // Store in database
-      token_data[cookieID] = JSON.stringify([
+      let data = JSON.stringify([
         tokenResponse.tokens,
         privateData.googleID,
-      ]);
+      ])
+      token_data[cookieID] = data;
+      console.log(cookieID.length)
 
       // Send cookie ("remember me")
       res.cookie("userID", cookieID);

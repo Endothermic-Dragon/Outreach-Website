@@ -8,23 +8,56 @@ Choose a good font:
 - Helvetica Neue
 
 
+Get Postgres URI from Heroku, save as environment variabe in DATABASE_URL
+
 Data format (rough draft):
 
-user-map:
+cookie-map:
 {
-    "google_user_id": {
-        "name": "Baguette",
-        "profile_picture": google-picture | uploaded, (see https://stackoverflow.com/questions/5613898)
-        "tags": [from access-levels],
-        "subteam": subteam-id
+    cookie-uuid: {
+        token: TokenObject,
+        googleID: google_user_id,
+        tags: [student | manager | admin | super-admin],
+        subteam: subteam-name
     }
 }
 
-access-levels:
+outreach:
 {
-    "level-id-1" : "student",
-    "level-id-2" : "mentor",
-    "level-id-3" : "admin",
-    "level-id-4" : "superadmin"
+    google_user_id: {
+        initiative_data: "{
+            initiative_id_1: {
+                lead: {
+                    // Timestamp entered: amount entered
+                    Date.now(): hours
+                },
+                regular: {
+                    // Timestamp entered: amount entered
+                    Date.now(): hours
+                }
+            }
+        }"
+        // When hours added, if no previous hours, add one to people count
+        initiative_id_1: "{
+            lead: true,
+            // Timestamp to ID entered time
+            engagement: [Date.now(): hours]
+        }",
+        initiative_id_1: "{
+            lead: false,
+            // Timestamp to ID entered time
+            engagement: [Date.now(): hours]
+        }",
+    }
 }
 
+initiatives:
+{
+    initiative_id_1: {
+        name: initiative_name (max 200 chars),
+        participants: count,
+        engagement: "hours:minutes",
+        order-id: #,
+        description: initiative_description (max 5000 chars)
+    }
+}

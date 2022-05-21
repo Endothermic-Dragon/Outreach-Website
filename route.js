@@ -135,10 +135,15 @@ app.post("/validate-login-code", async function (req, res) {
       // Send profile data
       res.status(200).send(publicData)
     } else {
-      // Generate UNIQUE value to ID user
+      // Get used uuids
+      let cookieIDs = await pool.query(`
+      select cookie_uuid from cookie_user_map;
+      `).then(data => data.rows.map(el => el.cookie_uuid)).catch(err => console.log(err))
+
+      // Generate UNIQUE uuid
       let cookieID = uuid();
       while (true) {
-        if (!token_data[cookieID]) {
+        if (!cookieIDs.includes(cookieID)) {
           break;
         }
         cookieID = uuid();

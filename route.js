@@ -77,7 +77,7 @@ app.get("/auto-login-user", async function (req, res) {
   }
 
   let token = await pool.query(`
-  select token from cookie_user_map where cookie_uuid = '${req.cookies.userID}';
+  select token from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
   `).then(data => data.rows[0]?.token).catch(err => console.log(err))
 
   if (!token){
@@ -89,7 +89,7 @@ app.get("/auto-login-user", async function (req, res) {
     // Get user data
     let [publicData] = await getUserDetails(
       newClient(),
-      JSON.parse(token.replaceAll("\\", ""))
+      JSON.parse(token)
     )
 
     // Send profile data
@@ -133,16 +133,16 @@ app.post("/validate-login-code", async function (req, res) {
 
   // Compare google ID against database
   let cookieID = await pool.query(`
-  select cookie_uuid from cookie_user_map where google_id = '${privateData.googleID}';
+  select cookie_uuid from cookie_user_map where google_id = E${SqlString.escape(privateData.googleID)};
   `).then(data => data.rows[0]?.cookie_uuid).catch(err => console.log(err))
 
   // If uuid exists, reassign, otherwise, generate and remember
   if (cookieID){
     // Replace possibly outdated credentials
     await pool.query(`
-    update cookie_user_map set token = ${
+    update cookie_user_map set token = E${
       SqlString.escape(JSON.stringify(tokenResponse.tokens))
-    } where google_id = '${privateData.googleID}';
+    } where google_id = E${SqlString.escape(privateData.googleID)};
     `).catch(err => console.log(err))
 
     // Send cookie ("remember me")
@@ -168,11 +168,11 @@ app.post("/validate-login-code", async function (req, res) {
     // Store in database
     await pool.query(`
     insert into cookie_user_map(cookie_uuid, token, google_id)
-    values (${
+    values (E${
       SqlString.escape(cookieID)
-    }, ${
+    }, E${
       SqlString.escape(JSON.stringify(tokenResponse.tokens))
-    }, ${
+    }, E${
       SqlString.escape(privateData.googleID)
     });
     `).catch(err => console.log(err))

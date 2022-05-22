@@ -8,4 +8,5 @@ compile_settings.json
 compile.py
 package-lock.json
 package.json
-postgres-server-setup.js
+postgres-clear-table.js
+postgres-setup.js

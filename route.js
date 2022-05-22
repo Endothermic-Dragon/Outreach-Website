@@ -140,9 +140,9 @@ app.post("/validate-login-code", async function (req, res) {
   if (cookieID){
     // Replace possibly outdated credentials
     await pool.query(`
-    update cookie_user_map set token = '${
-      JSON.stringify(tokenResponse.tokens)
-    }' where google_id = '${privateData.googleID}';
+    update cookie_user_map set token = ${
+      SqlString.escape(JSON.stringify(tokenResponse.tokens))
+    } where google_id = '${privateData.googleID}';
     `).catch(err => console.log(err))
 
     // Send cookie ("remember me")

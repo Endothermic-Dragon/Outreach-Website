@@ -26,7 +26,7 @@ const peopleAPI = google.people({
   version: "v1",
 });
 
-externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
+const externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
 
 
 // Replace with database
@@ -70,35 +70,37 @@ app.use(cookieParser());
 // Serve authentication-related URLs
 
 app.get("/auto-login-user", async function (req, res) {
-  // TO DO: Validate origin URL
+  let domains = "localhost"
+  if (!domains.includes(req.get("host"))){
+    return res.status(404).send()
+  }
 
-  if (req.get("X-Requested-With") == "javascript-fetch") {
-    let token = await pool.query(`
-    select token from cookie_user_map where cookie_uuid = '${req.cookies.userID}';
-    `).then(data => data.rows[0]?.token).catch(err => console.log(err))
+  if (req.get("X-Requested-With") != "javascript-fetch"){
+    return res.status(404).send()
+  }
 
-    if (token) {
-      // Initialize client
-      const oauth2Client = newClient()
+  let token = await pool.query(`
+  select token from cookie_user_map where cookie_uuid = '${req.cookies.userID}';
+  `).then(data => data.rows[0]?.token).catch(err => console.log(err))
 
-      // TO DO: Handle if error (500)
+  if (token) {
+    // Initialize client
+    const oauth2Client = newClient()
+
+    // TO DO: Handle if error (500)
 
 
-      // Get user data
-      let userData = await getUserDetails(
-        oauth2Client,
-        JSON.parse(token)
-      );
+    // Get user data
+    let userData = await getUserDetails(
+      oauth2Client,
+      JSON.parse(token.replaceAll("\\", ""))
+    );
 
-      // Send profile data
-      res.status(200).send(userData[0]);
-    } else {
-      // Not in token database
-      res.status(400).send();
-    }
+    // Send profile data
+    res.status(200).send(userData[0]);
   } else {
-    // Unauthorized request
-    res.status(404).send();
+    // Not in token database
+    res.status(400).send();
   }
 });
 

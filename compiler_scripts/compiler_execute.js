@@ -71,7 +71,15 @@ const base_js_config = {
   },
   optimization: {
     minimize: true,
-    minimizer: [new TerserPlugin()],
+    minimizer: [new TerserPlugin({
+      parallel: true,
+      terserOptions: {
+        format: {
+          comments: false,
+        },
+      },
+      extractComments: false
+    })],
   },
 };
 

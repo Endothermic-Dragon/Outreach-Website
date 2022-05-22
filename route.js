@@ -138,6 +138,13 @@ app.post("/validate-login-code", async function (req, res) {
 
   // If uuid exists, reassign, otherwise, generate and remember
   if (cookieID){
+    // Replace possibly outdated credentials
+    await pool.query(`
+    update cookie_user_map set token = '${
+      JSON.stringify(tokenResponse.tokens)
+    }' where google_id = '${privateData.googleID}';
+    `).catch(err => console.log(err))
+
     // Send cookie ("remember me")
     res.cookie("userID", cookieID)
 

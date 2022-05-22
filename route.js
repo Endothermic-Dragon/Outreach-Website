@@ -27,6 +27,7 @@ const peopleAPI = google.people({
 });
 
 const externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
+const domains = ["localhost"]
 
 
 // Replace with database
@@ -70,113 +71,110 @@ app.use(cookieParser());
 // Serve authentication-related URLs
 
 app.get("/auto-login-user", async function (req, res) {
-  let domains = "localhost"
-  if (!domains.includes(req.get("host"))){
-    return res.status(404).send()
-  }
-
-  if (req.get("X-Requested-With") != "javascript-fetch"){
-    return res.status(404).send()
+  if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
+    // Unauthorized request origin
+    return res.status(400).send()
   }
 
   let token = await pool.query(`
   select token from cookie_user_map where cookie_uuid = '${req.cookies.userID}';
   `).then(data => data.rows[0]?.token).catch(err => console.log(err))
 
-  if (token) {
-    // Initialize client
-    const oauth2Client = newClient()
+  if (!token){
+    // Cookie not in database
+    return res.status(404).send()
+  }
 
-    // TO DO: Handle if error (500)
-
-
+  try {
     // Get user data
-    let userData = await getUserDetails(
-      oauth2Client,
+    let [publicData] = await getUserDetails(
+      newClient(),
       JSON.parse(token.replaceAll("\\", ""))
-    );
+    )
 
     // Send profile data
-    res.status(200).send(userData[0]);
-  } else {
-    // Not in token database
-    res.status(400).send();
+    res.status(200).send(publicData)
+  } catch {
+    // Invalid tokens
+    res.status(401).send()
   }
 });
 
 app.post("/validate-login-code", async function (req, res) {
+  if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
+    // Unauthorized request origin
+    return res.status(400).send()
+  }
+
   // Initialize client
   const oauth2Client = newClient()
 
-  // TO DO: Validate origin URL
+  // Get tokens
+  let tokenResponse = await oauth2Client.getToken(req.body.code)
 
-  if (req.get("X-Requested-With") == "javascript-fetch") {
-    // TO DO: Handle if error (500)
+  let publicData, privateData
 
-    // Initialize client
-    let tokenResponse = await oauth2Client.getToken(req.body.code);
-
+  try {
     // Get user data
-    let [publicData, privateData] = await getUserDetails(oauth2Client, tokenResponse.tokens);
+    [publicData, privateData] = await getUserDetails(oauth2Client, tokenResponse.tokens)
+  } catch {
+    // Invalid tokens
+    return res.status(401).send()
+  }
 
-    // Check if valid email extension
-    if (
-      !privateData.email.split("@").slice(-1)[0] != "htps.us"
-      && !externalEmails.includes(privateData.email)
-    ){
-      // Unauthorized user
-      return res.status(404).send()
-    }
+  // Check if valid email extension
+  if (
+    !privateData.email.split("@").slice(-1)[0] != "htps.us"
+    && !externalEmails.includes(privateData.email)
+  ){
+    // Unauthorized user
+    return res.status(401).send()
+  }
 
-    // Compare google ID against database
-   let cookieID = await pool.query(`
-    select cookie_uuid from cookie_user_map where google_id = '${privateData.googleID}';
-    `).then(data => data.rows[0]?.cookie_uuid).catch(err => console.log(err))
-    // console.log(cookieID)
+  // Compare google ID against database
+  let cookieID = await pool.query(`
+  select cookie_uuid from cookie_user_map where google_id = '${privateData.googleID}';
+  `).then(data => data.rows[0]?.cookie_uuid).catch(err => console.log(err))
 
-    // If uuid exists, reassign, otherwise, generate and remember
-    if (cookieID){
-      // Send cookie ("remember me")
-      res.cookie("userID", cookieID)
+  // If uuid exists, reassign, otherwise, generate and remember
+  if (cookieID){
+    // Send cookie ("remember me")
+    res.cookie("userID", cookieID)
 
-      // Send profile data
-      res.status(200).send(publicData)
-    } else {
-      // Get used uuids
-      let cookieIDs = await pool.query(`
-      select cookie_uuid from cookie_user_map;
-      `).then(data => data.rows.map(el => el.cookie_uuid)).catch(err => console.log(err))
-
-      // Generate UNIQUE uuid
-      let cookieID = uuid();
-      while (true) {
-        if (!cookieIDs.includes(cookieID)) {
-          break;
-        }
-        cookieID = uuid();
-      }
-
-      // Store in database
-      await pool.query(`
-      insert into cookie_user_map(cookie_uuid, token, google_id)
-      values (${
-        SqlString.escape(cookieID)
-      }, ${
-        SqlString.escape(JSON.stringify(tokenResponse.tokens))
-      }, ${
-        SqlString.escape(privateData.googleID)
-      });
-      `).catch(err => console.log(err))
-
-      // Send cookie ("remember me")
-      res.cookie("userID", cookieID);
-
-      // Send profile data
-      res.status(200).send(publicData);
-    }
+    // Send profile data
+    res.status(200).send(publicData)
   } else {
-    // Unauthorized request
-    res.status(404).send();
+    // Get used uuids
+    let cookieIDs = await pool.query(`
+    select cookie_uuid from cookie_user_map;
+    `).then(data => data.rows.map(el => el.cookie_uuid)).catch(err => console.log(err))
+
+    // Generate UNIQUE uuid
+    cookieID = uuid();
+    while (true) {
+      if (!cookieIDs.includes(cookieID)) {
+        break;
+      }
+      cookieID = uuid();
+    }
+
+    // Store in database
+    await pool.query(`
+    insert into cookie_user_map(cookie_uuid, token, google_id)
+    values (${
+      SqlString.escape(cookieID)
+    }, ${
+      SqlString.escape(JSON.stringify(tokenResponse.tokens))
+    }, ${
+      SqlString.escape(privateData.googleID)
+    });
+    `).catch(err => console.log(err))
+
+    // Send cookie ("remember me")
+    res.cookie("userID", cookieID);
+
+    // Send profile data
+    res.status(200).send(publicData);
   }
 });
 
@@ -189,6 +187,7 @@ app.use("/scripts", express.static("build/scripts"));
 // Redirect ".html"
 app.use("/", function (req, res, next) {
   if (req.url.slice(-5) == ".html") {
+    // Update later
     res.status(200);
     return res.redirect(req.url.slice(0, -5));
   }
@@ -197,7 +196,7 @@ app.use("/", function (req, res, next) {
 
 // Serve HTML files
 app.use(function (req, res) {
-  res.sendFile(req.url + ".html", { root: __dirname + "/build" });
+  res.status(200).sendFile(req.url + ".html", { root: __dirname + "/build" });
 });
 
 // Start server

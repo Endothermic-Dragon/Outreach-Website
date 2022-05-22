@@ -73,16 +73,21 @@ app.get("/auto-login-user", async function (req, res) {
   // TO DO: Validate origin URL
 
   if (req.get("X-Requested-With") == "javascript-fetch") {
-    if (token_data[req.cookies.userID]) {
+    let token = await pool.query(`
+    select token from cookie_user_map where cookie_uuid = '${req.cookies.userID}';
+    `).then(data => data.rows[0]?.token).catch(err => console.log(err))
+
+    if (token) {
       // Initialize client
       const oauth2Client = newClient()
 
       // TO DO: Handle if error (500)
 
+
       // Get user data
       let userData = await getUserDetails(
         oauth2Client,
-        JSON.parse(token_data[req.cookies.userID])[0]
+        JSON.parse(token)
       );
 
       // Send profile data

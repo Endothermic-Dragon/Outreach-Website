@@ -28,20 +28,12 @@ const peopleAPI = google.people({
   version: "v1",
 });
 
+// TO DO: remove later, as it will be unnecessary
 const externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
 const domains = ["localhost"]
 
-
-// Database format
-// Col 1: cookie ID
-// Col 2: tokens required to get data
-// Col 3: google ID
-// When adding new data, wipe old data with same google ID
-
-
-// Use pg for database
-
 // Get profile details from ID token
+// TO DO: remove email scope in the future, as it will be unnecessary
 async function getUserDetails(oauth2Client, tokens) {
   oauth2Client.setCredentials(tokens);
 
@@ -66,12 +58,6 @@ async function getUserDetails(oauth2Client, tokens) {
 
 async function searchUsers(oauth2Client, tokens, search) {
   oauth2Client.setCredentials(tokens);
-  // let responseContacts = await peopleAPI.people.searchContacts({
-  //   query: "Macdonald",
-  //   readMask: "names,photos,emailAddresses",
-  //   auth: oauth2Client
-  // });
-  // console.log(responseContacts.data)
 
   let response = await peopleAPI.people.searchDirectoryPeople({
     query: search,
@@ -81,16 +67,35 @@ async function searchUsers(oauth2Client, tokens, search) {
       "DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE"
     ],
     auth: oauth2Client
-  });
+  }).then(searchResponse => searchResponse.data.people);
 
-  let resultLength = response.data.people.length
-  if (resultLength == 1){
-    return response.data.people[0].resourceName.slice(7)
-  } else if (resultLength == 0){
-    return "Not found"
-  } else {
-    return "Not specific enough"
+  return response.map(el => {
+    return {
+      name: el.names.find(el2 => el2.metadata.primary).displayName,
+      photo: el.photos.find(el2 => el2.metadata.primary).url.slice(0,-5),
+      email: el.emailAddresses.find(el2 => el2.metadata.primary).value
+    }
+  })
+}
+
+async function findUniqueUser(oauth2Client, tokens, search) {
+  oauth2Client.setCredentials(tokens);
+
+  let response = await peopleAPI.people.searchDirectoryPeople({
+    query: search,
+    readMask: "names,photos,emailAddresses",
+    sources: [
+      "DIRECTORY_SOURCE_TYPE_DOMAIN_CONTACT",
+      "DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE"
+    ],
+    auth: oauth2Client
+  }).then(searchResponse => searchResponse.data.people);
+
+  if (response.length != 1){
+    throw Error("Unexpected response of " + response.length + " results.")
   }
+
+  return response[0].resourceName.slice(7)
 }
 
 app.use(express.json());
@@ -130,6 +135,7 @@ app.get("/auto-login", async function (req, res) {
 });
 
 // Validate user on sign in, enable automatic login
+// TO DO: fix so users aren't added automatically
 app.post("/validate-login", async function (req, res) {
   if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
     // Unauthorized request origin
@@ -215,6 +221,10 @@ app.post("/validate-login", async function (req, res) {
   }
 });
 
+// Search for user - provide live suggessions
+// Should use searchUsers()
+// ---- implementation pending ----
+
 // Add user, given valid credentials
 // Request body should contain "subteam", "tags", and "email"
 app.post("/add-user", async function (req, res) {
@@ -243,7 +253,7 @@ app.post("/add-user", async function (req, res) {
   // Find user in school directory
   let userID;
   try {
-    userID = await searchUsers(
+    userID = await findUniqueUser(
       newClient(),
       JSON.parse(token),
       req.body.email
@@ -309,7 +319,6 @@ app.post("/add-user", async function (req, res) {
   // Send OK
   return res.status(200).send();
 });
-
 
 // Serve regular files
 // Serve static resources, styling, and scripts

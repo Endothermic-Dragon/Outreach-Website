@@ -6,7 +6,7 @@ fetch("./add-user", {
     email: "rajeshad@htps.us"
   }),
   headers: {
-    "Content-Type": "text/plain",
+    "Content-Type": "application/json",
     "X-Requested-With": "javascript-fetch"
   }
 }).then(async (res) => {

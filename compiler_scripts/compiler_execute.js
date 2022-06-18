@@ -110,6 +110,12 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
         mode: devMode,
       });
     } else {
+      if (devMode == "development"){
+        return {
+          copy_file: true,
+          filePath: filePath,
+        }
+      }
       // Regular CSS
       return Object.assign({}, base_css_config, {
         plugins: [
@@ -123,6 +129,12 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
       });
     }
   } else if (extension == "js") {
+    if (devMode == "development"){
+      return {
+        copy_file: true,
+        filePath: filePath,
+      }
+    }
     // JS
     const fileSplit = filePath.split("/");
     const partialDir = fileSplit.slice(0, -1).join("/");

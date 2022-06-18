@@ -1,3 +1,5 @@
+const subteams = require("./dynamic_data/subteams.json")
+const tags = require("./dynamic_data/tags.json")
 const { google } = require("googleapis");
 const { Pool } = require('pg');
 const uuid = require("uuid").v4;
@@ -17,7 +19,7 @@ const pool = new Pool({
 function newClient(){
   return new google.auth.OAuth2(
     "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
-    "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",
+    "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",
     "http://localhost"
   );
 }
@@ -29,9 +31,6 @@ const peopleAPI = google.people({
 const externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
 const domains = ["localhost"]
 
-
-// Replace with database
-let token_data = {};
 
 // Database format
 // Col 1: cookie ID
@@ -65,12 +64,42 @@ async function getUserDetails(oauth2Client, tokens) {
   return [publicData, privateData];
 }
 
+async function searchUsers(oauth2Client, tokens, search) {
+  oauth2Client.setCredentials(tokens);
+  // let responseContacts = await peopleAPI.people.searchContacts({
+  //   query: "Macdonald",
+  //   readMask: "names,photos,emailAddresses",
+  //   auth: oauth2Client
+  // });
+  // console.log(responseContacts.data)
+
+  let response = await peopleAPI.people.searchDirectoryPeople({
+    query: search,
+    readMask: "names,photos,emailAddresses",
+    sources: [
+      "DIRECTORY_SOURCE_TYPE_DOMAIN_CONTACT",
+      "DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE"
+    ],
+    auth: oauth2Client
+  });
+
+  let resultLength = response.data.people.length
+  if (resultLength == 1){
+    return response.data.people[0].resourceName.slice(7)
+  } else if (resultLength == 0){
+    return "Not found"
+  } else {
+    return "Not specific enough"
+  }
+}
+
 app.use(express.json());
 app.use(cookieParser());
 
 // Serve authentication-related URLs
 
-app.get("/auto-login-user", async function (req, res) {
+// Automatically log in user if valid cookie
+app.get("/auto-login", async function (req, res) {
   if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
     // Unauthorized request origin
     return res.status(400).send()
@@ -100,7 +129,8 @@ app.get("/auto-login-user", async function (req, res) {
   }
 });
 
-app.post("/validate-login-code", async function (req, res) {
+// Validate user on sign in, enable automatic login
+app.post("/validate-login", async function (req, res) {
   if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
     // Unauthorized request origin
     return res.status(400).send()
@@ -112,7 +142,7 @@ app.post("/validate-login-code", async function (req, res) {
   // Get tokens
   let tokenResponse = await oauth2Client.getToken(req.body.code)
 
-  let publicData, privateData
+  let publicData, privateData;
 
   try {
     // Get user data
@@ -124,7 +154,7 @@ app.post("/validate-login-code", async function (req, res) {
 
   // Check if valid email extension
   if (
-    !privateData.email.split("@").slice(-1)[0] != "htps.us"
+    privateData.email.split("@").slice(-1)[0] != "htps.us"
     && !externalEmails.includes(privateData.email)
   ){
     // Unauthorized user
@@ -184,6 +214,102 @@ app.post("/validate-login-code", async function (req, res) {
     res.status(200).send(publicData);
   }
 });
+
+// Add user, given valid credentials
+// Request body should contain "subteam", "tags", and "email"
+app.post("/add-user", async function (req, res) {
+  if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
+    // Unauthorized request origin
+    return res.status(400).send()
+  }
+
+  let userData = await pool.query(`
+  select token, tags from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
+  `).then(data => data.rows[0]).catch(err => console.log(err))
+
+  if (!userData){
+    // Cookie not in database
+    return res.status(404).send()
+  }
+
+  let token = userData.token;
+  let userTags = userData.tags;
+
+  // Validate person has proper credentials
+  if (!userTags.includes("admin") && !userTags.includes("super-admin")){
+    return res.status(403).send()
+  }
+
+  // Find user in school directory
+  let userID;
+  try {
+    userID = await searchUsers(
+      newClient(),
+      JSON.parse(token),
+      req.body.email
+    );
+
+    // Handle cases without one result
+    if (userID == "Not found"){
+      return res.status(400).send("Error: unable to find person in directory.")
+    } else if (userID == "Not specific enough"){
+      return res.status(400).send("Error: found multiple people in directory.")
+    }
+
+    // Make sure user ID not already in database
+    let duplicateID = await pool.query(`
+    select google_id from cookie_user_map where google_id = E${SqlString.escape(userID)};
+    `).then(data => data.rows[0] != undefined).catch(err => console.log(err))
+
+    if (duplicateID){
+      return res.status(405).send()
+    }
+  } catch {
+    return res.status(401).send()
+  }
+
+  // Get used uuids
+  let cookieIDs = await pool.query(`
+  select cookie_uuid from cookie_user_map;
+  `).then(data => data.rows.map(el => el.cookie_uuid)).catch(err => console.log(err))
+
+  // Generate UNIQUE uuid
+  let cookieID = uuid();
+  while (cookieIDs.includes(cookieID)) {
+    cookieID = uuid();
+  }
+
+  // Check subteam valid
+  if (!subteams.includes(req.body.subteam)){
+    return res.status(400).send()
+  }
+
+  // Check if tags valid
+  let validTags = req.body.tags.every(tag => tags.includes(tag))
+  if (!validTags){
+    return res.status(400).send()
+  }
+
+  // Store in database
+  await pool.query(`
+  insert into cookie_user_map(cookie_uuid, token, google_id, subteam, tags)
+  values (E${
+    SqlString.escape(cookieID)
+  }, E${
+    SqlString.escape(JSON.stringify({}))
+  }, E${
+    SqlString.escape(userID)
+  }, E${
+    SqlString.escape(req.body.subteam)
+  }, ARRAY[${
+    req.body.tags.map(tag => "E" + SqlString.escape(tag)).join(", ")
+  }]);
+  `).catch(err => console.log(err))
+
+  // Send OK
+  return res.status(200).send();
+});
+
 
 // Serve regular files
 // Serve static resources, styling, and scripts

@@ -4,7 +4,7 @@
     "node_compile_dir": "./compiled",
     "python_compile_dir": "./build",
     
-    "production": true,
+    "production": false,
     "clean_up": true,
 
     "min_html": false,

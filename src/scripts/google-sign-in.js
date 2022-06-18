@@ -7,10 +7,10 @@ function setProfile(profileName, profilePicURL){
 function signIn(){
   const client = google.accounts.oauth2.initCodeClient({
     client_id: '672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com',
-    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/directory.readonly',
     ux_mode: 'popup',
     callback: (response) => {
-      fetch("./validate-login-code", {
+      fetch("./validate-login", {
         method: "POST",
         body: JSON.stringify({code: response.code}),
         headers: {
@@ -27,7 +27,7 @@ function signIn(){
 }
 
 // Send custom headers for authentication
-fetch("./auto-login-user", {
+fetch("./auto-login", {
   headers: {
     "Content-Type": "application/json",
     "X-Requested-With": "javascript-fetch"

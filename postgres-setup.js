@@ -23,7 +23,7 @@ await client.query(`
 create table cookie_user_map(
   cookie_uuid char(36),
   subteam varchar(32),
-  tags varchar(10)[],
+  tags varchar(11)[],
   token varchar(2048),
   google_id varchar(32)
 );

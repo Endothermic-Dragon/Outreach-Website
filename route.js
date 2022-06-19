@@ -1,3 +1,5 @@
+const helpEmail = "studentleadership@roboraiders.com"
+
 const subteams = require("./dynamic_data/subteams.json")
 const tags = require("./dynamic_data/tags.json")
 const { google } = require("googleapis");
@@ -28,29 +30,32 @@ const peopleAPI = google.people({
   version: "v1",
 });
 
-// TO DO: remove later, as it will be unnecessary
-const externalEmails = ["eshaandebnath@gmail.com", "endothermic.dragon@gmail.com"]
+function handleDatabaseError(err) {
+  error = new Error("Unable to fetch data from database.")
+  error.name("DatabaseError")
+  error.response = err
+  throw error
+}
+
 const domains = ["localhost"]
 
 // Get profile details from ID token
-// TO DO: remove email scope in the future, as it will be unnecessary
 async function getUserDetails(oauth2Client, tokens) {
   oauth2Client.setCredentials(tokens);
 
   let response = await peopleAPI.people.get({
     resourceName: "people/me",
-    personFields: "names,photos,emailAddresses",
+    personFields: "names,photos",
     auth: oauth2Client,
   });
 
   let publicData = {
     name: response.data.names.find((el) => el.metadata.primary).displayName,
-    photo: response.data.photos.find((el) => el.metadata.primary).url,
+    photo: response.data.photos.find((el) => el.metadata.primary).url
   };
 
   let privateData = {
-    email: response.data.emailAddresses.find((el) => el.metadata.primary).value,
-    googleID: response.data.resourceName.slice(7),
+    googleID: response.data.resourceName.slice(7)
   };
 
   return [publicData, privateData];
@@ -67,12 +72,12 @@ async function searchUsers(oauth2Client, tokens, search) {
       "DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE"
     ],
     auth: oauth2Client
-  }).then(searchResponse => searchResponse.data.people);
+  }).then(searchResponse => searchResponse.data.people || []);
 
   return response.map(el => {
     return {
       name: el.names.find(el2 => el2.metadata.primary).displayName,
-      photo: el.photos.find(el2 => el2.metadata.primary).url.slice(0,-5),
+      photo: el.photos ? el.photos.find(el2 => el2.metadata.primary).url.slice(0,-5) : "",
       email: el.emailAddresses.find(el2 => el2.metadata.primary).value
     }
   })
@@ -91,8 +96,17 @@ async function findUniqueUser(oauth2Client, tokens, search) {
     auth: oauth2Client
   }).then(searchResponse => searchResponse.data.people);
 
-  if (response.length != 1){
-    throw Error("Unexpected response of " + response.length + " results.")
+  if (response.length > 1){
+    let error = new Error(`Unexpected response of ${response.length} results.\nTo view the complete response, view the "response" attribute of this error.`)
+    error.name = "MultipleResults"
+    error.response = response
+    throw error
+  }
+
+  if (response.length < 1){
+    let error = new Error(`Unexpected response of ${response.length} results.\nTo view the complete response, view the "response" attribute of this error.`)
+    error.name = "NullResponse"
+    throw error
   }
 
   return response[0].resourceName.slice(7)
@@ -110,16 +124,16 @@ app.get("/auto-login", async function (req, res) {
     return res.status(400).send()
   }
 
-  let token = await pool.query(`
-  select token from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
-  `).then(data => data.rows[0]?.token).catch(err => console.log(err))
-
-  if (!token){
-    // Cookie not in database
-    return res.status(404).send()
-  }
-
   try {
+    let token = await pool.query(`
+    select token from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
+    `).then(data => data.rows[0]?.token).catch(handleDatabaseError)
+  
+    if (!token){
+      // Cookie not in database
+      return res.status(404).send({errorMessage:`Unable to sign in automatically.`})
+    }
+
     // Get user data
     let [publicData] = await getUserDetails(
       newClient(),
@@ -129,8 +143,17 @@ app.get("/auto-login", async function (req, res) {
     // Send profile data
     res.status(200).send(publicData)
   } catch {
-    // Invalid tokens
-    res.status(401).send()
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+
+    res.status(502).send({
+      errorMessage: "Unknown error encountered while fetching user's Google data. Try signing out and signing back in.",
+      errorData: e
+    })
   }
 });
 
@@ -145,85 +168,108 @@ app.post("/validate-login", async function (req, res) {
   // Initialize client
   const oauth2Client = newClient()
 
-  // Get tokens
-  let tokenResponse = await oauth2Client.getToken(req.body.code)
-
-  let publicData, privateData;
-
+  let tokenResponse, publicData, privateData;
   try {
+    // Get tokens
+    tokenResponse = await oauth2Client.getToken(req.body.code);
+
     // Get user data
     [publicData, privateData] = await getUserDetails(oauth2Client, tokenResponse.tokens)
-  } catch {
+  } catch (e) {
     // Invalid tokens
-    return res.status(401).send()
+    return res.status(502).send({
+      errorMessage: "Unknown error encountered while fetching user's Google data. Try signing in again.",
+      errorData: e
+    })
   }
 
-  // Check if valid email extension
-  if (
-    privateData.email.split("@").slice(-1)[0] != "htps.us"
-    && !externalEmails.includes(privateData.email)
-  ){
-    // Unauthorized user
-    return res.status(401).send()
-  }
+  try {
+    // Compare google ID against database
+    let cookieID = await pool.query(`
+    select cookie_uuid from cookie_user_map where google_id = E${SqlString.escape(privateData.googleID)};
+    `).then(data => data.rows[0]?.cookie_uuid).catch(handleDatabaseError)
 
-  // Compare google ID against database
-  let cookieID = await pool.query(`
-  select cookie_uuid from cookie_user_map where google_id = E${SqlString.escape(privateData.googleID)};
-  `).then(data => data.rows[0]?.cookie_uuid).catch(err => console.log(err))
-
-  // If uuid exists, reassign, otherwise, generate and remember
-  if (cookieID){
     // Replace possibly outdated credentials
     await pool.query(`
     update cookie_user_map set token = E${
       SqlString.escape(JSON.stringify(tokenResponse.tokens))
     } where google_id = E${SqlString.escape(privateData.googleID)};
-    `).catch(err => console.log(err))
+    `).catch(handleDatabaseError)
 
     // Send cookie ("remember me")
     res.cookie("userID", cookieID)
 
     // Send profile data
     res.status(200).send(publicData)
-  } else {
-    // Get used uuids
-    let cookieIDs = await pool.query(`
-    select cookie_uuid from cookie_user_map;
-    `).then(data => data.rows.map(el => el.cookie_uuid)).catch(err => console.log(err))
 
-    // Generate UNIQUE uuid
-    cookieID = uuid();
-    while (true) {
-      if (!cookieIDs.includes(cookieID)) {
-        break;
-      }
-      cookieID = uuid();
+    // } else {
+    //   return res.status(401).send()
+    // }
+  } catch (e) {
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
     }
 
-    // Store in database
-    await pool.query(`
-    insert into cookie_user_map(cookie_uuid, token, google_id)
-    values (E${
-      SqlString.escape(cookieID)
-    }, E${
-      SqlString.escape(JSON.stringify(tokenResponse.tokens))
-    }, E${
-      SqlString.escape(privateData.googleID)
-    });
-    `).catch(err => console.log(err))
-
-    // Send cookie ("remember me")
-    res.cookie("userID", cookieID);
-
-    // Send profile data
-    res.status(200).send(publicData);
+    res.status(404).send(`You are not a registered user. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> to be added to the database, or for additional help.`)
   }
 });
 
 // Search for user - provide live suggessions
-// Should use searchUsers()
-// ---- implementation pending ----
+// Request body should contain "query"
+app.post("/search", async function (req, res) {
+  if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
+    // Unauthorized request origin
+    return res.status(400).send({})
+  }
+
+  let userData;
+  try {
+    userData = await pool.query(`
+    select token, tags from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
+    `).then(data => data.rows[0]).catch(handleDatabaseError)
+  } catch (e) {
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+    })
+    }
+  }
+
+  if (!userData){
+    // Cookie not in database
+    return res.status(404).send({errorMessage:`You are not a registered user. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> to be added to the database, or for additional help.`})
+  }
+
+  let token = userData.token;
+  let userTags = userData.tags;
+
+  // Validate person has proper credentials
+  if (!userTags.includes("admin") && !userTags.includes("super-admin")){
+    return res.status(403).send({errorMessage:`You do not have access to this resource. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> if you think this is a mistake.`})
+  }
+
+  // Find user in school directory
+  let searchResults;
+  try {
+    searchResults = await searchUsers(
+      newClient(),
+      JSON.parse(token),
+      req.body.query
+    );
+  } catch (e) {
+    console.log(e)
+    return res.status(502).send({
+      errorMessage: "Unknown error encountered while fetching search results from Google. Try signing out and signing back in.",
+      errorData: e
+    })
+  }
+
+  res.status(200).send(searchResults)
+})
 
 // Add user, given valid credentials
 // Request body should contain "subteam", "tags", and "email"
@@ -233,13 +279,23 @@ app.post("/add-user", async function (req, res) {
     return res.status(400).send()
   }
 
-  let userData = await pool.query(`
-  select token, tags from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
-  `).then(data => data.rows[0]).catch(err => console.log(err))
+  let userData;
+  try {
+    userData = await pool.query(`
+    select token, tags from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
+    `).then(data => data.rows[0]).catch(handleDatabaseError)
+  } catch (e) {
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+  }
 
   if (!userData){
     // Cookie not in database
-    return res.status(404).send()
+    return res.status(404).send({errorMessage:`You are not a registered user. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> to be added to the database, or for additional help.`})
   }
 
   let token = userData.token;
@@ -247,7 +303,22 @@ app.post("/add-user", async function (req, res) {
 
   // Validate person has proper credentials
   if (!userTags.includes("admin") && !userTags.includes("super-admin")){
-    return res.status(403).send()
+    return res.status(403).send({errorMessage:`You do not have access to this resource. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> if you think this is a mistake.`})
+  }
+
+  // Check subteam valid
+  if (!subteams.includes(req.body.subteam)){
+    return res.status(400).send()
+  }
+
+  // Check if tags valid
+  let validTags = req.body.tags.every(tag => tags.includes(tag))
+  if (!validTags){
+    return res.status(400).send()
+  }
+
+  if (userTags.includes("admin") && (req.body.tags.includes("admin") || req.body.tags.includes("super-admin"))){
+    return res.status(403).send({errorMessage:"You do not have the proper credential authority to use this tag."})
   }
 
   // Find user in school directory
@@ -269,52 +340,69 @@ app.post("/add-user", async function (req, res) {
     // Make sure user ID not already in database
     let duplicateID = await pool.query(`
     select google_id from cookie_user_map where google_id = E${SqlString.escape(userID)};
-    `).then(data => data.rows[0] != undefined).catch(err => console.log(err))
+    `).then(data => data.rows[0] != undefined).catch(handleDatabaseError)
 
     if (duplicateID){
-      return res.status(405).send()
+      return res.status(405).send({errorMessage: "Invalid user - already exists in database."})
     }
-  } catch {
-    return res.status(401).send()
+  } catch (e) {
+    console.log(e)
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+    if (e.name == "MultipleResults"){
+      return res.status(500).send({
+        errorMessage: "Unexpected error - more than one user found.",
+        errorData: e
+      })
+    }
+    if (e.name == "NullResponse"){
+      return res.status(500).send({errorMessage: "Unexpected error - no users found."})
+    }
+    return res.status(502).send({
+      errorMessage: "Unknown error encountered while fetching user's Google data. Try signing out and signing back in.",
+      errorData: e
+    })
   }
 
-  // Get used uuids
-  let cookieIDs = await pool.query(`
-  select cookie_uuid from cookie_user_map;
-  `).then(data => data.rows.map(el => el.cookie_uuid)).catch(err => console.log(err))
+  try {
+    // Get used uuids
+    let cookieIDs = await pool.query(`
+    select cookie_uuid from cookie_user_map;
+    `).then(data => data.rows.map(el => el.cookie_uuid)).catch(handleDatabaseError)
 
-  // Generate UNIQUE uuid
-  let cookieID = uuid();
-  while (cookieIDs.includes(cookieID)) {
-    cookieID = uuid();
+    // Generate UNIQUE uuid
+    let cookieID = uuid();
+    while (cookieIDs.includes(cookieID)) {
+      cookieID = uuid();
+    }
+
+    // Store in database
+    await pool.query(`
+    insert into cookie_user_map(cookie_uuid, token, google_id, subteam, tags)
+    values (E${
+      SqlString.escape(cookieID)
+    }, E${
+      SqlString.escape(JSON.stringify({}))
+    }, E${
+      SqlString.escape(userID)
+    }, E${
+      SqlString.escape(req.body.subteam)
+    }, ARRAY[${
+      req.body.tags.map(tag => "E" + SqlString.escape(tag)).join(", ")
+    }]);
+    `).catch(handleDatabaseError)
+  } catch (e) {
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
   }
-
-  // Check subteam valid
-  if (!subteams.includes(req.body.subteam)){
-    return res.status(400).send()
-  }
-
-  // Check if tags valid
-  let validTags = req.body.tags.every(tag => tags.includes(tag))
-  if (!validTags){
-    return res.status(400).send()
-  }
-
-  // Store in database
-  await pool.query(`
-  insert into cookie_user_map(cookie_uuid, token, google_id, subteam, tags)
-  values (E${
-    SqlString.escape(cookieID)
-  }, E${
-    SqlString.escape(JSON.stringify({}))
-  }, E${
-    SqlString.escape(userID)
-  }, E${
-    SqlString.escape(req.body.subteam)
-  }, ARRAY[${
-    req.body.tags.map(tag => "E" + SqlString.escape(tag)).join(", ")
-  }]);
-  `).catch(err => console.log(err))
 
   // Send OK
   return res.status(200).send();

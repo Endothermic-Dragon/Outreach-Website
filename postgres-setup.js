@@ -42,7 +42,7 @@ console.log(3)
 
 await client.query(`
 create table initiatives(
-  order_id smallint,
+  order_id smallserial,
   name varchar(200),
   description varchar(5000),
   participants smallint,

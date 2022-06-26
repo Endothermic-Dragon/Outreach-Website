@@ -426,6 +426,146 @@ app.post("/add-user", async function (req, res) {
 });
 
 // Modify a user (tags, subteam)
+app.post("/edit-user", async function (req, res) {
+  if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
+    // Unauthorized request origin
+    return res.status(400).send()
+  }
+
+  let userData;
+  try {
+    userData = await pool.query(`
+    select token, tags from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
+    `).then(data => data.rows[0]).catch(handleDatabaseError)
+  } catch (e) {
+    console.log(e)
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+  }
+
+  if (!userData){
+    // Cookie not in database
+    return res.status(404).send({errorMessage:`You are not a registered user. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> to be added to the database, or for additional help.`})
+  }
+
+  let token = userData.token;
+  let userTags = userData.tags;
+
+  // Validate person has proper credentials
+  if (!userTags.includes("admin") && !userTags.includes("super-admin")){
+    return res.status(403).send({errorMessage:`You do not have access to this resource. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> if you think this is a mistake.`})
+  }
+
+  // Check subteam valid
+  if (!subteams.includes(req.body.subteam)){
+    return res.status(400).send()
+  }
+
+  // Check if tags valid
+  let validTags = req.body.tags.every(tag => tags.includes(tag))
+  if (!validTags){
+    return res.status(400).send()
+  }
+
+  if (userTags.includes("admin") && (req.body.tags.includes("admin") || req.body.tags.includes("super-admin"))){
+    return res.status(403).send({errorMessage:"You do not have the proper credential authority to use this tag."})
+  }
+
+  // Find user in school directory
+  let userID;
+  try {
+    userID = await findUniqueUser(
+      newClient(),
+      JSON.parse(token),
+      req.body.email
+    );
+
+    // Handle cases without one result
+    if (userID == "Not found"){
+      return res.status(400).send({
+        errorMessage: "Error: unable to find person in directory."
+      })
+    } else if (userID == "Not specific enough"){
+      return res.status(400).send({
+        errorMessage: "Error: found multiple people in directory."
+      })
+    }
+
+    // Make sure user ID not already in database
+    let duplicateID = await pool.query(`
+    select google_id from cookie_user_map where google_id = E${SqlString.escape(userID)};
+    `).then(data => data.rows[0] != undefined).catch(handleDatabaseError)
+
+    if (duplicateID){
+      return res.status(405).send({errorMessage: "Invalid user - already exists in database."})
+    }
+  } catch (e) {
+    console.log(e)
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+    if (e.name == "MultipleResults"){
+      return res.status(500).send({
+        errorMessage: "Unexpected error - more than one user found.",
+        errorData: e
+      })
+    }
+    if (e.name == "NullResponse"){
+      return res.status(500).send({errorMessage: "Unexpected error - no users found."})
+    }
+    return res.status(502).send({
+      errorMessage: "Unknown error encountered while fetching user's Google data. Try signing out and signing back in.",
+      errorData: e
+    })
+  }
+
+  try {
+    // Get used uuids
+    let cookieIDs = await pool.query(`
+    select cookie_uuid from cookie_user_map;
+    `).then(data => data.rows.map(el => el.cookie_uuid)).catch(handleDatabaseError)
+
+    // Generate UNIQUE uuid
+    let cookieID = uuid();
+    while (cookieIDs.includes(cookieID)) {
+      cookieID = uuid();
+    }
+
+    // Store in database
+    await pool.query(`
+    insert into cookie_user_map(cookie_uuid, token, google_id, subteam, tags)
+    values (E${
+      SqlString.escape(cookieID)
+    }, E${
+      SqlString.escape(JSON.stringify({}))
+    }, E${
+      SqlString.escape(userID)
+    }, E${
+      SqlString.escape(req.body.subteam)
+    }, ARRAY[${
+      req.body.tags.map(tag => "E" + SqlString.escape(tag)).join(", ")
+    }]);
+    `).catch(handleDatabaseError)
+  } catch (e) {
+    console.log(e)
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+  }
+
+  // Send OK
+  return res.status(200).send();
+});
 
 // Delete a user
 
@@ -498,6 +638,7 @@ app.post("/add-event", async function (req, res) {
         error = new Error("Multiple items found with same order_id.")
         error.name = "DatabaseError"
         error.response = data.rows
+        throw error
       }
       return data.rows[0]?.unique_id || 0
     }).catch(handleDatabaseError)
@@ -625,13 +766,8 @@ app.post("/edit-event", async function (req, res) {
   res.status(200).send()
 })
 
-// Switch orderings of events
-// Authority checks and whatnot
-// Make sure to add check if each is unique
-// Get event by ID
-// Check each placement matches
-// Check that placements before and after consist of the same set of numbers
-// Switch and update
+// Update the order of events
+// Body must contain "unique_id", "old", "new"
 app.post("/order-events", async function (req, res) {
   if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
     // Unauthorized request origin
@@ -664,16 +800,6 @@ app.post("/order-events", async function (req, res) {
       errorMessage:`You do not have access to this resource. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> if you think this is a mistake.`
     })
   }
-
-
-  // unique_id char(36),
-  // order_id smallserial,
-  // name varchar(200),
-  // description varchar(5000),
-  // participants smallint,
-  // engagement serial,
-  // hide_log boolean,
-  // hide_public boolean
 
   if ((req.body.data || []).length < 2){
     return res.status(400).send({
@@ -715,46 +841,102 @@ app.post("/order-events", async function (req, res) {
     })
   }
 
+  // Check that old IDs match
   try {
-    // Get used IDs
-    let uniqueIDs = await pool.query(`
-    select unique_id from initiatives;
-    `).then(data => data.rows.map(el => el.unique_id)).catch(handleDatabaseError)
-
-    // Generate UNIQUE ID for initiative
-    let uniqueID = uuid();
-    while (uniqueIDs.includes(uniqueID)) {
-      uniqueID = uuid();
-    }
-
-    // Get the max order_id, increment by 1 for the new initiative
-    let maxID = await pool.query(`
-    select max(order_id) from initiatives;
+    // Fix old and new 
+    await pool.query(`
+      select unique_id, order_id from initiatives where unique_id in ${
+        "(" + req.body.data.map(el => "E" + SqlString.escape(el.unique_id)).join(",") + ")"
+      };
     `).then(data => {
-      if (data.rows.length > 1){
-        error = new Error("Multiple items found with same order_id.")
+      if (data.rows.length != req.body.data.length){
+        error = new Error("Unable to find all initiatives in database.")
         error.name = "DatabaseError"
         error.response = data.rows
+        throw error
       }
-      return data.rows[0]?.unique_id || 0
+
+      if (req.body.data.every(el => {
+        return (data.rows.find(el2 => el.unique_id == el2.unique_id) || []).old == el.order_id
+      })){
+        error = new Error("Mismatched unique_id and order_id.")
+        error.name = "DatabaseError"
+        error.response = data.rows
+        throw error
+      }
     }).catch(handleDatabaseError)
 
-    let newID = maxID + 1;
-
-    // Store in database
+    // Update with new IDs
     await pool.query(`
-    insert into initiatives(unique_id, order_id, name, description, participants, engagement, archive)
-    values (E${
-      SqlString.escape(uniqueID)
-    }, ${
-      newID
-    }, E${
-      SqlString.escape(req.body.name)
-    }, E${
-      SqlString.escape(req.body.description)
-    }, 0, 0, 0);
+    update initiatives set order_id = case unique_id
+    ${
+      req.body.data.map(el => {
+        return `when E${SqlString.escape(el.unique_id)} then E${SqlString.escape(el.new)}`
+      }).join("\n") + "\nend"
+    }
+    where unique_id in ${
+      "(" + req.body.data.map(el => "E" + SqlString.escape(el.unique_id)).join(",") + ")"
+    };
     `).catch(handleDatabaseError)
+  } catch (e) {
+    console.log(e)
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+      })
+    }
+    return res.status(500).send({
+      errorMessage: "Unknown error encountered.",
+      errorData: e
+    })
+  }
+  res.status(200).send()
+})
 
+// Delete events
+app.post("/delete-event", async function (req, res) {
+  if (!domains.includes(req.get("host")) || req.get("X-Requested-With") != "javascript-fetch"){
+    // Unauthorized request origin
+    return res.status(400).send({})
+  }
+
+  let userTags;
+  try {
+    userTags = await pool.query(`
+    select tags from cookie_user_map where cookie_uuid = E${SqlString.escape(req.cookies.userID || "")};
+    `).then(data => data.rows[0]?.tags).catch(handleDatabaseError)
+  } catch (e) {
+    console.log(e)
+    if (e.name == "DatabaseError"){
+      return res.status(502).send({
+        errorMessage:"Unable to fetch data from database.",
+        errorData: e
+    })
+    }
+  }
+
+  if (!userTags){
+    // Cookie not in database
+    return res.status(404).send({errorMessage:`You are not a registered user. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> to be added to the database, or for additional help.`})
+  }
+
+  // Validate person has proper credentials
+  if (!userTags.includes("manager") && !userTags.includes("admin") && !userTags.includes("super-admin")){
+    return res.status(403).send({
+      errorMessage:`You do not have access to this resource. Please contact <a href="mailto:${helpEmail}">${helpEmail}</a> if you think this is a mistake.`
+    })
+  }
+
+  if (!req.body.unique_id){
+    return res.status(400).send({errorMessage: "Please include the initiative's unique ID."})
+  }
+
+  try {
+    // Delete by unique ID
+    await pool.query(`
+    delete from initiatives where unique_id = ${SqlString.escape(req.body.unique_id)};
+    `).catch(handleDatabaseError)
   } catch (e) {
     console.log(e)
     if (e.name == "DatabaseError"){
@@ -772,8 +954,6 @@ app.post("/order-events", async function (req, res) {
   res.status(200).send()
 })
 
-// Delete events
-
 // ----- Logging hours -----
 
 // Add hours
@@ -782,7 +962,7 @@ app.post("/order-events", async function (req, res) {
 // Update participant stats for event
 // Deal with engagement carefully - JS number overflow?
 
-
+// Remove hours
 
 
 

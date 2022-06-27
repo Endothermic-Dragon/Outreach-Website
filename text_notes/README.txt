@@ -10,6 +10,26 @@ Choose a good font:
 
 Get Postgres URI from Heroku, save as environment variabe in DATABASE_URL
 
+-- Restructuring outreach data --
+initiative-id: [{
+    initiative-name: "",
+    lead: [
+        {
+            timestamp: num,
+            time: num
+        }
+    ],
+    regular: [
+        {
+            timestamp: num,
+            time: num
+        }
+    ]
+},
+...
+]
+
+
 Data format (rough draft):
 
 cookie-map:

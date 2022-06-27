@@ -1,0 +1,15 @@
+Fully tested:
+
+Half-tested:
+- auto-login
+- validate-login
+- search
+- add-user
+- edit-user
+- delete-user
+- add-event
+- edit-event
+- order-events
+- delete-event
+
+Untested:

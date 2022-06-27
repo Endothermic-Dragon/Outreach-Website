@@ -51,6 +51,8 @@ create table initiatives(
   description varchar(5000),
   participants smallint,
   engagement serial,
+  lead boolean,
+  regular boolean,
   hide_log boolean,
   hide_public boolean
 );

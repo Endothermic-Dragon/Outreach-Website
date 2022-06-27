@@ -19,6 +19,7 @@ async function addUser(email){
     }
   })
 }
+
 async function search(query){
   return fetch("./search", {
     method: "POST",

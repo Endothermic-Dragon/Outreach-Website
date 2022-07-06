@@ -9,7 +9,7 @@
     <li><a href="{{item[0]}}">{{item[1]}}</a></li>
   {%- endif -%}
   {%- endfor -%}
-  {%- set navigation = [("log", "Log Hours"), ("order-initiatives", "Order Initiatives"), ("edit-initiatives", "Edit Initiatives"), ("edit-users", "Edit Users")] -%}
+  {%- set navigation = [("log", "Log Hours"), ("edit-initiatives", "Edit Initiatives"), ("edit-users", "Edit Users")] -%}
   {# For super-admins, edit-users allows to edit everyone #}
   {%- for item in navigation -%}
   {% if item[0] == page %}

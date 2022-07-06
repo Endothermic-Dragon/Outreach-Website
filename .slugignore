@@ -3,6 +3,10 @@ node_modules/
 src/
 text-notes/
 .gitignore
+babel.config.json
+compile_settings.json
 compile.py
 package-lock.json
 package.json
+postgres-clear-table.js
+postgres-setup.js

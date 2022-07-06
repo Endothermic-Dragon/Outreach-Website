@@ -71,12 +71,20 @@ const base_js_config = {
   },
   optimization: {
     minimize: true,
-    minimizer: [new TerserPlugin()],
+    minimizer: [new TerserPlugin({
+      parallel: true,
+      terserOptions: {
+        format: {
+          comments: false,
+        },
+      },
+      extractComments: false
+    })],
   },
 };
 
 function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust, devMode) {
-  const [extension] = filePath.split(".").slice(-1);
+  const extension = filePath.split(".").at(-1);
   if (["html", "jinja-html"].includes(extension) || filePath.slice(0,9) == "./static/") {
     // HTML
     return {
@@ -85,7 +93,7 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
     };
   } else if (["sass", "scss", "css"].includes(extension)) {
     // CSS
-    const [fileName] = filePath.split("/").slice(-1);
+    const fileName = filePath.split("/").at(-1);
     if (fileName.slice(0, 1) == "_") {
       // Partial for SASS
       return "skip";
@@ -102,6 +110,12 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
         mode: devMode,
       });
     } else {
+      if (devMode == "development"){
+        return {
+          copy_file: true,
+          filePath: filePath,
+        }
+      }
       // Regular CSS
       return Object.assign({}, base_css_config, {
         plugins: [
@@ -115,10 +129,16 @@ function getIndividualWebpackSettings(dirPathIn, dirPathOut, filePath, jsAdjust,
       });
     }
   } else if (extension == "js") {
+    if (devMode == "development"){
+      return {
+        copy_file: true,
+        filePath: filePath,
+      }
+    }
     // JS
     const fileSplit = filePath.split("/");
     const partialDir = fileSplit.slice(0, -1).join("/");
-    const [fileName] = fileSplit.slice(-1);
+    const fileName = fileSplit.at(-1);
     return Object.assign({}, base_js_config, {
       plugins: [
         new RemoveEmptyScriptsPlugin()

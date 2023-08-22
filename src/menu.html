@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+
+{# <link rel="stylesheet" href="./styles/menu.css">
+<script defer src="./scripts/not-jquery.js"></script> 
+<script defer src="./scripts/menu.js"></script>  #}
+<body>
+<div class="header">
+  <div class="menu-bars">
+    <div></div>
+    <div class="menu-bar-middle">
+      <div></div>
+      <div></div>
+    </div>
+    <div></div>
+  </div>
+  <div class="header-pad-left"></div>
+  <div class="header-container">
+    <img src="./static/logos/logo_dark.png">
+    <div>Team 75 - RoboRaiders</div>
+  </div>
+  <div class="header-pad-right"></div>
+</div>
+
+<div class="container">
+<div class="content">
+{% block content %}{% endblock %}
+</div>
+</div>
+
+<div class="sidebar-shadow"></div>
+<div class="sidebar">
+<div>
+  <div class="icon"><img src="./static/home-house-icon.png"></div>
+  <div class="label">Home</div>
+</div>
+<div>
+  <div class="icon"><img src="./static/hand-heart-outline-icon.png"></div>
+  <div class="label">Outreach</div>
+</div>
+<div>
+  <div class="icon"><img src="./static/people-team-icon.png"></div>
+  <div class="label">Edit Members</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "html-options": {
+    "meta": {
+      "viewport": "width=device-width, initial-scale=1, shrink-to-fit=no",
+      "theme-color": "#ff0000",
+      "charset": "utf-8"
+    },
+    "scriptLoading": "defer"
+  },
+  "menu-design": "menu.html",
+  "html-pages": [
+    {
+      "chunk": "flask-demo",
+      "html": "demo/flask-demo.html",
+      "bundler": ["demo/import-demo.js", "demo/import.scss"]
+    }
+  ]
+}

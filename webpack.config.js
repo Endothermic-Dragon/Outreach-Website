@@ -1,10 +1,12 @@
+// ExtractTextWebpackPlugin
+
 // Generated using webpack-cli https://github.com/webpack/webpack-cli
 
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
-const run = require("./run-python.js").run;
+const { run } = require("./run-python.js");
 
 run("flask_compile.py")
 
@@ -36,7 +38,16 @@ const config = {
     rules: [
       {
         test: /\.s[ac]ss$/i,
-        use: [stylesHandler, "css-loader", "postcss-loader", "sass-loader"],
+        use: [
+          stylesHandler,
+          {
+            loader: "css-loader",
+            options: {
+              url: false
+            }
+          },
+          "postcss-loader", "sass-loader"
+        ],
       },
       {
         test: /\.css$/i,
@@ -56,25 +67,39 @@ const config = {
     ],
   },
   watchOptions: {
-    ignored: ["**/node_modules", "**/flask_build"],
-    poll: 250
+    ignored: ["/node_modules", "**/flask_build"],
+    poll: true,
   },
+  cache: true
 };
+
+const menuExists = webpackData["menu-bundler"];
+menuExists && (config.entry.menu = webpackData["menu-bundler"].map(
+  el => path.resolve("./flask_build/", el)
+));
 
 webpackData["html-pages"].forEach(page => {
   page.html
-  && config.plugins.push(
-    new HtmlWebpackPlugin({
-      template: path.resolve("./flask_build/" + page.html),
-      filename: page.chunk + ".html",
-      meta: webpackData["html-options"].meta || {},
-      chunks: [page.chunk],
-    })
-  );
+    && config.plugins.push(
+      new HtmlWebpackPlugin({
+        template: path.resolve("./flask_build/" + page.html),
+        filename: page.chunk + ".html",
+        meta: webpackData["html-options"].meta || {},
+        chunks: menuExists ? ["menu", page.chunk] : [page.chunk],
+      })
+    );
   page.bundler
-  && (config.entry[page.chunk] = page.bundler.map(
-    el => path.resolve("./flask_build/", el)
-  ));
+    // && (page.bundler = [...page.bundler, ...webpackData["menu-bundler"]])
+    && (
+      config.entry[page.chunk] = {
+        import: page.bundler.map(
+          el => path.resolve("./flask_build/", el)
+        )
+      },
+      menuExists && (
+        config.entry[page.chunk].dependOn = "menu"
+      )
+    )
 })
 
 module.exports = () => {

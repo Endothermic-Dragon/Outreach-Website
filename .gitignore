@@ -1,2 +1,3 @@
 node_modules
 flask_build
+package-lock.json
